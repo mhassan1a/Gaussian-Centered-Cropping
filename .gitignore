@@ -1,0 +1,25 @@
+data/
+out/
+./__pycache__
+./.ipynb_checkpoints
+./.ipynb_checkpoints/Untitled-checkpoint.ipynb
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+*/.env
+*/.venv
+*.gz
+*.tgz
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.z
+*.7z
+*.dmg
+*.bin
