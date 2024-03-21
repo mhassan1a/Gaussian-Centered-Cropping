@@ -12,7 +12,7 @@ from tqdm import tqdm
 from torchvision.datasets import CIFAR10
 from torchvision import transforms
 import json
-import time 
+from datetime import datetime
 
 def train(epoch,max_epochs, model, dataloader, optimizer, scheduler, criterion, device):
     #one epoch of training
@@ -35,7 +35,7 @@ def train(epoch,max_epochs, model, dataloader, optimizer, scheduler, criterion, 
 
 def pretraining(max_epochs=100, batch_size=512, num_workers=40, cropping=None, transform=None, hidden_dim=256):
     print(f"GPU Availble:{torch.cuda.is_available()}")
-    print('Pre-Traing Starts on GPU...')
+    print('Pre-Traing Starts ...')
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Device: {device}")
     train_dataset = TwoViewDataSet(root='./data', train=True, download=True, cropping=cropping, transform=transform)
@@ -69,7 +69,7 @@ def addclassifier(model, num_classes):
     model.resnet.fc = classifier
     return model
 
-def train_classifier(model, max_epochs=100, earlystop_patience=10):
+def train_classifier(model, max_epochs=100, earlystop_patience=10, num_workers=1):
     print('Training Classifier...')
  
     transform_train = transforms.Compose([
@@ -90,16 +90,16 @@ def train_classifier(model, max_epochs=100, earlystop_patience=10):
             ),
     ])
 
-    train_dataset = CIFAR10(root='./data', train=True, download=True, transform=transform_train)
-    test_dataset = CIFAR10(root='./data', train=False, download=True, transform=transform_test)
+    train_dataset = CIFAR10(root='./data', train=True, download=False, transform=transform_train)
+    test_dataset = CIFAR10(root='./data', train=False, download=False, transform=transform_test)
 
     val_size = int(0.2 * len(train_dataset))
     train_size = len(train_dataset) - val_size
     train_dataset, val_dataset = torch.utils.data.random_split(train_dataset, [train_size, val_size])
 
-    train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True, num_workers =40 )
-    val_loader = DataLoader(val_dataset, batch_size=100, shuffle=False, num_workers =40 )
-    test_loader = DataLoader(test_dataset, batch_size=100, shuffle=False, num_workers =40 )
+    train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True, num_workers =num_workers )
+    val_loader = DataLoader(val_dataset, batch_size=100, shuffle=False, num_workers =num_workers )
+    test_loader = DataLoader(test_dataset, batch_size=100, shuffle=False, num_workers =num_workers )
 
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(
@@ -147,10 +147,10 @@ def train_classifier(model, max_epochs=100, earlystop_patience=10):
         val_accuracy = val_correct_predictions / len(val_dataset)
         # early stopping
         if early_stop.early_stop(val_loss):
-            print("We are at epoch:", epoch)
+            #print("We are at epoch:", epoch)
             break
         
-        print(f"Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss:.4f}, Train Accuracy: {train_accuracy:.4f}, Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.4f}")
+        #print(f"Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss:.4f}, Train Accuracy: {train_accuracy:.4f}, Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.4f}")
 
     # After training, evaluate the model on the test set
     model.eval()
@@ -165,15 +165,15 @@ def train_classifier(model, max_epochs=100, earlystop_patience=10):
             correct += (predicted == labels).sum().item()
 
         test_accuracy = correct / total
-        print(f"Test Accuracy: {test_accuracy:.4f}")
+        #print(f"Test Accuracy: {test_accuracy:.4f}")
         
     return test_accuracy , val_accuracy, train_accuracy
 
 
 if __name__ == '__main__':
     # config
-    pretrain_epoch = 0
-    num_classes_workers = 40
+    pretrain_epoch = 1
+    num_workers = 40
     hidden_dim = 256
     batchsize = 512
     clf_epochs = 1
@@ -221,7 +221,7 @@ if __name__ == '__main__':
                     
                     model, pretrain_loss = pretraining(max_epochs= pretrain_epoch,
                                                         batch_size=batchsize,
-                                                          num_workers= num_classes_workers,
+                                                          num_workers= num_workers,
                                                             cropping=crop, 
                                                             transform=view_transform,
                                                             hidden_dim=hidden_dim)
@@ -229,16 +229,19 @@ if __name__ == '__main__':
                     model = addclassifier(model, 10)
                     test_accuracy , val_accuracy, train_accuracy = train_classifier(model=model, 
                                                                                     max_epochs=clf_epochs,
-                                                                                    earlystop_patience=10)
+                                                                                    earlystop_patience=10,
+                                                                                    num_workers= num_workers,
+                                                                                    )
 
                     results[method][crop_size][std].append((test_accuracy, val_accuracy, train_accuracy))
                     print(f"Method: {method}, Crop Size: {crop_size}, std: {std}, Trial: {trial}, Test Accuracy: {test_accuracy}, Val Accuracy: {val_accuracy}, Train Accuracy: {train_accuracy}")
                     
     print(results)
     results['epoch'] = pretrain_epoch
-    results['num_classes_workers'] = num_classes_workers
+    results['num_classes_workers'] = num_workers
     results['hidden_dim'] = hidden_dim
     results['batch_size'] = batchsize
 
-    with open('results{time.time()}.json', 'w') as f:
+    timestamp = datetime.now()
+    with open(f'results_{timestamp}_.json', 'w') as f:
         json.dump(results, f)
