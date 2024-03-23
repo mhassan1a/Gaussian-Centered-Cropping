@@ -41,7 +41,7 @@ def pretraining(max_epochs=100, batch_size=512, num_workers=40, cropping=None, t
     train_dataset = TwoViewDataSet(root='./data', train=True, download=True, cropping=cropping, transform=transform)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
     model = Proto18(hidden_dim = hidden_dim)
-    model = nn.DataParallel(model)
+    model = model
     model.to(device)
     optimizer = torch.optim.SGD(
             model.parameters(), lr=0.1, momentum=0.9
@@ -110,7 +110,7 @@ def train_classifier(model, max_epochs=100, earlystop_patience=10, num_workers=1
     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[20,40,60,80], gamma=0.1)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = nn.DataParallel(model)
+    model = model
     model.to(device)
     early_stop = EarlyStopper(patience= earlystop_patience, min_delta=0.001)
     num_epochs = max_epochs
@@ -182,9 +182,9 @@ if __name__ == '__main__':
     clf_epochs = 150
 
 
-    methods = ['GCC_NO_regularization','GCC_regularization']
+    methods = ['GCC_regularization']
     crop_sizes = [0.4, 0.6, 0.8]
-    num_of_trials = 5
+    num_of_trials = 1
     stds = [0.001, 0.01, 0.1, 0.3,0.5,0.7, 1,2,5,10,100,200]
     results = {}
     for method in methods:

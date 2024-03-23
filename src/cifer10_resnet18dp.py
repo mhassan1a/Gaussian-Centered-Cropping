@@ -1,9 +1,9 @@
-from src.misc import EarlyStopper
-from src.datasets import TwoViewDataSet
+from misc import EarlyStopper
+from datasets import TwoViewDataSet
 from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, ToTensor
-from src.cropping import GaussianCrops
-from src.models import Proto18
+from cropping import GaussianCrops
+from models import Proto18
 import numpy as np
 import torch
 import torch.nn as nn
@@ -13,11 +13,8 @@ from torchvision.datasets import CIFAR10
 from torchvision import transforms
 import json
 from datetime import datetime
-import multiprocessing as mp
-from multiprocessing import Manager as mp_manager
 
-
-def train_epoch( model, dataloader, optimizer, scheduler, criterion, device):
+def train(epoch,max_epochs, model, dataloader, optimizer, scheduler, criterion, device):
     #one epoch of training
     model.train()
     losses = []
@@ -43,7 +40,9 @@ def pretraining(max_epochs=100, batch_size=512, num_workers=40, cropping=None, t
     print(f"Device: {device}")
     train_dataset = TwoViewDataSet(root='./data', train=True, download=True, cropping=cropping, transform=transform)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
-    model = Proto18(hidden_dim = hidden_dim).to(device)
+    model = Proto18(hidden_dim = hidden_dim)
+    model = nn.DataParallel(model)
+    model.to(device)
     optimizer = torch.optim.SGD(
             model.parameters(), lr=0.1, momentum=0.9
         )
@@ -52,7 +51,7 @@ def pretraining(max_epochs=100, batch_size=512, num_workers=40, cropping=None, t
     train_progress = tqdm(range(max_epochs), desc='pre training', unit='epoch')
     pretrain_loss = []
     for epoch in train_progress:
-        loss = train_epoch(model, train_loader, optimizer, scheduler, criterion, device)
+        loss = train(epoch, max_epochs, model, train_loader, optimizer, scheduler, criterion, device)
         pretrain_loss.append(loss)
         train_progress.set_postfix(loss=loss)
     return model, pretrain_loss
@@ -111,6 +110,7 @@ def train_classifier(model, max_epochs=100, earlystop_patience=10, num_workers=1
     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[20,40,60,80], gamma=0.1)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = nn.DataParallel(model)
     model.to(device)
     early_stop = EarlyStopper(patience= earlystop_patience, min_delta=0.001)
     num_epochs = max_epochs
@@ -150,8 +150,12 @@ def train_classifier(model, max_epochs=100, earlystop_patience=10, num_workers=1
         val_accuracy = val_correct_predictions / len(val_dataset)
         # early stopping
         if early_stop.early_stop(val_loss):
+            #print("We are at epoch:", epoch)
             break
         
+        #print(f"Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss:.4f}, Train Accuracy: {train_accuracy:.4f}, Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.4f}")
+
+    # After training, evaluate the model on the test set
     model.eval()
     with torch.no_grad():
         correct = 0
@@ -163,73 +167,25 @@ def train_classifier(model, max_epochs=100, earlystop_patience=10, num_workers=1
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
 
-        test_accuracy = correct / total      
+        test_accuracy = correct / total
+        #print(f"Test Accuracy: {test_accuracy:.4f}")
+        
     return test_accuracy , val_accuracy, train_accuracy
 
 
-def run_trial(method, crop_size, std, trial_num, num_workers, pretrain_epoch, batchsize, hidden_dim, clf_epochs):
-    view_transform = transforms.Compose([
-        transforms.ToPILImage(),
-        transforms.RandomHorizontalFlip(),
-        transforms.GaussianBlur(kernel_size=(3, 3)),
-        transforms.ToTensor(),
-        transforms.Normalize(
-            mean=(0.4914, 0.4822, 0.4465),
-            std=(0.2023, 0.1994, 0.2010)
-        ),
-    ])
-    
-    crop_percentage = crop_size
-    seed = None
-    std_scale = std
-    pad = True
-    reg = False
-    if method == 'GCC_regularization':
-        pad = False
-        reg = True
-
-    crop = GaussianCrops(crop_percentage=crop_percentage,
-                         seed=seed,
-                         std_scale=std_scale,
-                         padding=pad,
-                         regularised_crop=reg)
-
-    model, pretrain_loss = pretraining(max_epochs=pretrain_epoch,
-                                       batch_size=batchsize,
-                                       num_workers=num_workers,
-                                       cropping=crop,
-                                       transform=view_transform,
-                                       hidden_dim=hidden_dim)
-
-    model = addclassifier(model, 10)
-    test_accuracy, val_accuracy, train_accuracy = train_classifier(model=model,
-                                                                   max_epochs=clf_epochs,
-                                                                   earlystop_patience=10,
-                                                                   num_workers=num_workers)
-
-    print(f"Method: {method}, Crop Size: {crop_size}, std: {std}, Trial: {trial_num}, Test Accuracy: {test_accuracy}, Val Accuracy: {val_accuracy}, Train Accuracy: {train_accuracy}")
-    return test_accuracy, val_accuracy, train_accuracy
-
 if __name__ == '__main__':
     # config
-    pretrain_epoch = 1
-    num_workers = 0
+    pretrain_epoch = 200
+    num_workers = 16
     hidden_dim = 256
     batchsize = 512
-    clf_epochs = 1
+    clf_epochs = 150
 
-    methods = ['GCC_NO_regularization', 'GCC_regularization']
+
+    methods = ['GCC_NO_regularization','GCC_regularization']
     crop_sizes = [0.4, 0.6, 0.8]
-    num_of_trials = 4
-    stds = [0.001, 0.01, 0.1, 0.3, 0.5, 0.7, 1, 2, 5, 10, 100, 200]
-
-    # Determine the number of processes to use
-    num_processes = min(mp.cpu_count(), num_of_trials)  # Use all available CPU cores or fewer if there are fewer trials
-
-    # Create a multiprocessing Pool for trials
-    pool = mp.Pool(processes=num_processes, maxtasksperchild=4)
-
-    # Parallelize the runs for trials only
+    num_of_trials = 5
+    stds = [0.001, 0.01, 0.1, 0.3,0.5,0.7, 1,2,5,10,100,200]
     results = {}
     for method in methods:
         results[method] = {}
@@ -237,33 +193,58 @@ if __name__ == '__main__':
             results[method][crop_size] = {}
             for std in stds:
                 results[method][crop_size][std] = []
-                # Parallelize trials for each parameter combination
+                for trial in range(num_of_trials):
+                    view_transform = transforms.Compose(
+                        [   transforms.ToPILImage(),
+                            #transforms.RandomCrop(24),
+                            transforms.RandomHorizontalFlip(),
+                            #transforms.ColorJitter(brightness=.5, hue=.3),
+                            transforms.GaussianBlur(kernel_size=(3,3)),
+                            transforms.ToTensor(),
+                            transforms.Normalize(
+                                mean = (0.4914, 0.4822, 0.4465),
+                                std = (0.2023, 0.1994, 0.2010)
+                            ),
+                        ]
+                    )  
+                    crop_percentage = crop_size
+                    seed = None
+                    std_scale = std
+                    pad = True 
+                    reg = False
+                    if method == 'GCC_regularization':
+                        pad = False 
+                        reg = True
                 
-                trial_results = [pool.apply_async(run_trial, 
-                                    args=(method, crop_size, std, trial_num, num_workers, pretrain_epoch, batchsize, hidden_dim, clf_epochs)) 
-                                    for trial_num in range(num_of_trials)]
-                pool.close()
-                pool.join()
-                print(f"Method: {method}, Crop Size: {crop_size}, std: {std}")
-                # Retrieve results from trials
-                for trial_result in trial_results:
-                    test_accuracy, val_accuracy, train_accuracy = trial_result.get()
+                
+                    crop = GaussianCrops(crop_percentage = crop_percentage,
+                                          seed = seed, 
+                                        std_scale = std_scale,
+                                       padding=pad,regularised_crop=reg)
+                    
+                    model, pretrain_loss = pretraining(max_epochs= pretrain_epoch,
+                                                        batch_size=batchsize,
+                                                          num_workers= num_workers,
+                                                            cropping=crop, 
+                                                            transform=view_transform,
+                                                            hidden_dim=hidden_dim)
+
+                    model = addclassifier(model, 10)
+                    test_accuracy , val_accuracy, train_accuracy = train_classifier(model=model, 
+                                                                                    max_epochs=clf_epochs,
+                                                                                    earlystop_patience=10,
+                                                                                    num_workers= num_workers,
+                                                                                    )
+
                     results[method][crop_size][std].append((test_accuracy, val_accuracy, train_accuracy))
-
-    # Close the pool and wait for the processes to finish
-   
-
+                    print(f"Method: {method}, Crop Size: {crop_size}, std: {std}, Trial: {trial}, Test Accuracy: {test_accuracy}, Val Accuracy: {val_accuracy}, Train Accuracy: {train_accuracy}")
+                    
     print(results)
+    results['epoch'] = pretrain_epoch
+    results['num_classes_workers'] = num_workers
+    results['hidden_dim'] = hidden_dim
+    results['batch_size'] = batchsize
 
-    # Save the final results to a JSON file
-    final_results = {
-        'results': results,
-        'epoch': pretrain_epoch,
-        'num_classes_workers': num_workers,
-        'hidden_dim': hidden_dim,
-        'batch_size': batchsize
-    }
-
-    timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-    with open(f'results_{timestamp}.json', 'w') as f:
-        json.dump(final_results, f)
+    timestamp = datetime.now()
+    with open(f'results_{timestamp}_.json', 'w') as f:
+        json.dump(results, f)
