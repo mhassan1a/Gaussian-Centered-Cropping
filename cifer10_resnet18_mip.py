@@ -13,7 +13,8 @@ from torchvision.datasets import CIFAR10
 from torchvision import transforms
 import json
 from datetime import datetime
-import multiprocessing
+import multiprocessing as mp
+from multiprocessing import Manager as mp_manager
 
 
 def train_epoch( model, dataloader, optimizer, scheduler, criterion, device):
@@ -219,14 +220,14 @@ if __name__ == '__main__':
 
     methods = ['GCC_NO_regularization', 'GCC_regularization']
     crop_sizes = [0.4, 0.6, 0.8]
-    num_of_trials = 5
+    num_of_trials = 4
     stds = [0.001, 0.01, 0.1, 0.3, 0.5, 0.7, 1, 2, 5, 10, 100, 200]
 
     # Determine the number of processes to use
-    num_processes = min(multiprocessing.cpu_count(), num_of_trials)  # Use all available CPU cores or fewer if there are fewer trials
+    num_processes = min(mp.cpu_count(), num_of_trials)  # Use all available CPU cores or fewer if there are fewer trials
 
     # Create a multiprocessing Pool for trials
-    pool = multiprocessing.Pool(processes=num_processes)
+    pool = mp.Pool(processes=num_processes, maxtasksperchild=4)
 
     # Parallelize the runs for trials only
     results = {}
@@ -241,15 +242,16 @@ if __name__ == '__main__':
                 trial_results = [pool.apply_async(run_trial, 
                                     args=(method, crop_size, std, trial_num, num_workers, pretrain_epoch, batchsize, hidden_dim, clf_epochs)) 
                                     for trial_num in range(num_of_trials)]
-                
+                pool.close()
+                pool.join()
+                print(f"Method: {method}, Crop Size: {crop_size}, std: {std}")
                 # Retrieve results from trials
                 for trial_result in trial_results:
                     test_accuracy, val_accuracy, train_accuracy = trial_result.get()
                     results[method][crop_size][std].append((test_accuracy, val_accuracy, train_accuracy))
 
     # Close the pool and wait for the processes to finish
-    pool.close()
-    pool.join()
+   
 
     print(results)
 
