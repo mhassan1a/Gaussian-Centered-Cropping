@@ -17,4 +17,4 @@ echo "Starting Job"
 
 #python ./src/cifer10_resnet18_mip_gcc.py #162139
 #python ./src/cifer10_resnet18_mip_gccn.py #162140
-#python ./src/cifer10_resnet18_mip_rc.py #162128 
+#python ./src/cifer10_resnet18_mip_rc.py #162141

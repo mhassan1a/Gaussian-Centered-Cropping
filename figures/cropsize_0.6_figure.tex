@@ -1,0 +1,77 @@
+% This file was created with tikzplotlib v0.10.1.
+\begin{tikzpicture}
+
+\definecolor{darkgray176}{RGB}{176,176,176}
+\definecolor{lightgray204}{RGB}{204,204,204}
+
+\begin{axis}[
+legend cell align={left},
+legend style={fill opacity=0.8, draw opacity=1, text opacity=1, draw=lightgray204},
+tick align=outside,
+tick pos=left,
+title={GCC with Crop Size 60.0\%},
+x grid style={darkgray176},
+xlabel={Variance},
+xmajorgrids,
+xmin=-0.55, xmax=11.55,
+xtick style={color=black},
+xtick={0,1,2,3,4,5,6,7,8,9,10,11},
+xtick={0,1,2,3,4,5,6,7,8,9,10,11},
+xticklabels={0.001,0.01,0.1,0.3,0.5,0.7,1,2,5,10,100,200},
+xticklabels={0.001,0.01,0.1,0.3,0.5,0.7,1,2,5,10,100,200},
+y grid style={darkgray176},
+ylabel={Mean Test accuracy},
+ymajorgrids,
+ymin=0, ymax=1,
+ytick style={color=black}
+]
+\path [draw=blue, fill=blue, opacity=0.3]
+(axis cs:0,0.39436082693913)
+--(axis cs:0,0.38903917306087)
+--(axis cs:1,0.401957488715734)
+--(axis cs:2,0.412104461994433)
+--(axis cs:3,0.421855054375765)
+--(axis cs:4,0.420285038416207)
+--(axis cs:5,0.424700340147861)
+--(axis cs:6,0.434476293391873)
+--(axis cs:7,0.432618753901375)
+--(axis cs:8,0.424948128644938)
+--(axis cs:9,0.40355679470934)
+--(axis cs:10,0.27933142121456)
+--(axis cs:11,0.286558759335818)
+--(axis cs:11,0.296991240664182)
+--(axis cs:11,0.296991240664182)
+--(axis cs:10,0.28746857878544)
+--(axis cs:9,0.41529320529066)
+--(axis cs:8,0.440201871355062)
+--(axis cs:7,0.442631246098625)
+--(axis cs:6,0.440273706608127)
+--(axis cs:5,0.434499659852139)
+--(axis cs:4,0.431564961583793)
+--(axis cs:3,0.428444945624235)
+--(axis cs:2,0.416395538005567)
+--(axis cs:1,0.411742511284266)
+--(axis cs:0,0.39436082693913)
+--cycle;
+\addlegendimage{area legend, draw=blue, fill=blue, opacity=0.3}
+\addlegendentry{+/-}
+
+\addplot [semithick, red, opacity=1]
+table {%
+0 0.3917
+1 0.40685
+2 0.41425
+3 0.42515
+4 0.425925
+5 0.4296
+6 0.437375
+7 0.437625
+8 0.432575
+9 0.409425
+10 0.2834
+11 0.291775
+};
+\addlegendentry{Mean}
+\end{axis}
+
+\end{tikzpicture}

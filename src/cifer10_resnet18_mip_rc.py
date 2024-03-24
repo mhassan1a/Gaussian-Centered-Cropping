@@ -223,16 +223,17 @@ if __name__ == '__main__':
             for std in stds:
                 results[method][crop_size][std] = []
                 # Parallelize trials for each parameter combination
+                print(f"Method: {method}, Crop Size: {crop_size}, std: {std}")
                 with MyPool(processes=4) as pool:
                     trial_results = [pool.apply(run_trial, 
                                         args=(method, crop_size, std, trial_num, num_workers, pretrain_epoch, batchsize, hidden_dim, clf_epochs)) 
                                         for trial_num in range(num_of_trials)]
                     pool.close()
                     pool.join()
-                print(f"Method: {method}, Crop Size: {crop_size}, std: {std}")
+                
                 # Retrieve results from trials
                 for trial_result in trial_results:
-                    test_accuracy, val_accuracy, train_accuracy = trial_result.get()
+                    test_accuracy, val_accuracy, train_accuracy = trial_result
                     results[method][crop_size][std].append((test_accuracy, val_accuracy, train_accuracy))
 
     # Close the pool and wait for the processes to finish
