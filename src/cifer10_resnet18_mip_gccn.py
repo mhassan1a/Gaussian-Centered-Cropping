@@ -1,7 +1,7 @@
 from misc import EarlyStopper
 from datasets import TwoViewDataSet
 from torch.utils.data import DataLoader
-from torchvision.transforms import Compose, ToTensor, RandomCrop
+from torchvision.transforms import Compose, ToTensor
 from cropping import GaussianCrops
 from models import Proto18
 import numpy as np
@@ -116,9 +116,9 @@ def train_classifier(model, max_epochs=100, earlystop_patience=10, num_workers=1
     num_epochs = max_epochs
     for epoch in range(1,num_epochs+1):
         
-        if epoch%2 == 0:
-            print(".", end="")
-            
+        if epoch % 2 == 0:
+            print('. ', end='')
+        
         model.train()  
         running_loss = 0.0 
         correct_predictions = 0
@@ -155,7 +155,7 @@ def train_classifier(model, max_epochs=100, earlystop_patience=10, num_workers=1
         # early stopping
         if early_stop.early_stop(val_loss):
             break
-        
+        print('.', end='')
     model.eval()
     with torch.no_grad():
         correct = 0
@@ -174,7 +174,6 @@ def train_classifier(model, max_epochs=100, earlystop_patience=10, num_workers=1
 def run_trial(method, crop_size, std, trial_num, num_workers, pretrain_epoch, batchsize, hidden_dim, clf_epochs):
     view_transform = transforms.Compose([
         transforms.ToPILImage(),
-        transforms.RandomCrop(crop_size),
         transforms.RandomHorizontalFlip(),
         transforms.GaussianBlur(kernel_size=(3, 3)),
         transforms.ToTensor(),
@@ -184,11 +183,25 @@ def run_trial(method, crop_size, std, trial_num, num_workers, pretrain_epoch, ba
         ),
     ])
     
+    crop_percentage = crop_size
+    seed = None
+    std_scale = std
+    pad = True
+    reg = False
+    if method == 'GCC_regularization':
+        pad = False
+        reg = True
+
+    crop = GaussianCrops(crop_percentage=crop_percentage,
+                         seed=seed,
+                         std_scale=std_scale,
+                         padding=pad,
+                         regularised_crop=reg)
 
     model, pretrain_loss = pretraining(max_epochs=pretrain_epoch,
                                        batch_size=batchsize,
                                        num_workers=num_workers,
-                                       cropping=None,
+                                       cropping=crop,
                                        transform=view_transform,
                                        hidden_dim=hidden_dim)
 
@@ -209,10 +222,10 @@ if __name__ == '__main__':
     batchsize = 512
     clf_epochs = 100
 
-    methods = ['Random_crop_pytorch']
-    crop_sizes = [20, 24 ,28]
-    num_of_trials = 5
-    stds = [0.001]#, 0.01, 0.1, 1, 10, 100, 1000]
+    methods = ['GCC_Padding']
+    crop_sizes = [0.4, 0.6, 0.8]
+    num_of_trials = 4
+    stds = [0.001, 0.01, 0.1, 1, 10, 100, 1000]
 
     # Parallelize the runs for trials only
     results = {}
@@ -223,16 +236,17 @@ if __name__ == '__main__':
             for std in stds:
                 results[method][crop_size][std] = []
                 # Parallelize trials for each parameter combination
+                print(f"Method: {method}, Crop Size: {crop_size}, std: {std}")
+
                 with MyPool(processes=4) as pool:
                     trial_results = [pool.apply(run_trial, 
                                         args=(method, crop_size, std, trial_num, num_workers, pretrain_epoch, batchsize, hidden_dim, clf_epochs)) 
                                         for trial_num in range(num_of_trials)]
                     pool.close()
                     pool.join()
-                print(f"Method: {method}, Crop Size: {crop_size}, std: {std}")
                 # Retrieve results from trials
                 for trial_result in trial_results:
-                    test_accuracy, val_accuracy, train_accuracy = trial_result.get()
+                    test_accuracy, val_accuracy, train_accuracy = trial_result
                     results[method][crop_size][std].append((test_accuracy, val_accuracy, train_accuracy))
 
     # Close the pool and wait for the processes to finish

@@ -100,7 +100,7 @@ def train_classifier(model, max_epochs=100, earlystop_patience=10, num_workers=1
     train_size = len(train_dataset) - val_size
     train_dataset, val_dataset = torch.utils.data.random_split(train_dataset, [train_size, val_size])
 
-    train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True, num_workers =num_workers )
+    train_loader = DataLoader(train_dataset, batch_size=512, shuffle=True, num_workers =num_workers )
     val_loader = DataLoader(val_dataset, batch_size=100, shuffle=False, num_workers =num_workers )
     test_loader = DataLoader(test_dataset, batch_size=100, shuffle=False, num_workers =num_workers )
 
@@ -114,7 +114,13 @@ def train_classifier(model, max_epochs=100, earlystop_patience=10, num_workers=1
     model.to(device)
     early_stop = EarlyStopper(patience= earlystop_patience, min_delta=0.001)
     num_epochs = max_epochs
+    
+    
     for epoch in range(1,num_epochs+1):
+        
+        if epoch%2 == 0:
+            print(".", end="")
+            
         model.train()  
         running_loss = 0.0 
         correct_predictions = 0
@@ -151,7 +157,6 @@ def train_classifier(model, max_epochs=100, earlystop_patience=10, num_workers=1
         # early stopping
         if early_stop.early_stop(val_loss):
             break
-        
     model.eval()
     with torch.no_grad():
         correct = 0
@@ -206,22 +211,22 @@ def run_trial(method, crop_size, std, trial_num, num_workers, pretrain_epoch, ba
                                                                    max_epochs=clf_epochs,
                                                                    earlystop_patience=10,
                                                                    num_workers=num_workers)
-
+    print()
     print(f"Method: {method}, Crop Size: {crop_size}, std: {std}, Trial: {trial_num}, Test Accuracy: {test_accuracy}, Val Accuracy: {val_accuracy}, Train Accuracy: {train_accuracy}")
     return test_accuracy, val_accuracy, train_accuracy
 
 if __name__ == '__main__':
     # config
-    pretrain_epoch = 0
-    num_workers = 3
+    pretrain_epoch = 150
+    num_workers = 4
     hidden_dim = 256
     batchsize = 512
     clf_epochs = 100
 
-    methods = ['Without_pretraining']
-    crop_sizes = [0.4]#, 0.6, 0.8]
-    num_of_trials = 5
-    stds = [0.001]#, 0.01, 0.1, 1, 10, 100, 1000]
+    methods = ['GCC_regularization']
+    crop_sizes = [0.4, 0.6, 0.8]
+    num_of_trials = 4
+    stds = [0.001, 0.01, 0.1, 1, 10, 100, 1000]
 
     # Parallelize the runs for trials only
     results = {}
@@ -232,8 +237,9 @@ if __name__ == '__main__':
             for std in stds:
                 results[method][crop_size][std] = []
                 # Parallelize trials for each parameter combination
+                print(f"Method: {method}, Crop Size: {crop_size}, std: {std}")
                 with MyPool(processes=4) as pool:
-                    trial_results = [pool.apply_async(run_trial, 
+                    trial_results = [pool.apply(run_trial, 
                                         args=(method, crop_size, std, trial_num, num_workers, pretrain_epoch, batchsize, hidden_dim, clf_epochs)) 
                                         for trial_num in range(num_of_trials)]
                     pool.close()
@@ -241,7 +247,7 @@ if __name__ == '__main__':
                 print(f"Method: {method}, Crop Size: {crop_size}, std: {std}")
                 # Retrieve results from trials
                 for trial_result in trial_results:
-                    test_accuracy, val_accuracy, train_accuracy = trial_result.get()
+                    test_accuracy, val_accuracy, train_accuracy = trial_result
                     results[method][crop_size][std].append((test_accuracy, val_accuracy, train_accuracy))
 
     # Close the pool and wait for the processes to finish
