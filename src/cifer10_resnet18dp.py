@@ -57,6 +57,7 @@ def pretraining(max_epochs=100, batch_size=512, num_workers=40, cropping=None, t
     return model, pretrain_loss
 
 def addclassifier(model, num_classes):
+    model = model.module
     for name , param in model.resnet.named_parameters():
         param.requires_grad = False
 

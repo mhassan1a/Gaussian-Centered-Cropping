@@ -13,9 +13,7 @@ from torchvision.datasets import CIFAR10
 from torchvision import transforms
 import json
 from datetime import datetime
-import multiprocessing as multiprocessing
-from multiprocessing import Manager as mp_manager
-from mlp import NestablePool as MyPool
+import  torch.multiprocessing as tmp
 
 def train_epoch( model, dataloader, optimizer, scheduler, criterion, device):
     #one epoch of training
@@ -44,6 +42,7 @@ def pretraining(max_epochs=100, batch_size=512, num_workers=40, cropping=None, t
     train_dataset = TwoViewDataSet(root='./data', train=True, download=True, cropping=cropping, transform=transform)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
     model = Proto18(hidden_dim = hidden_dim).to(device)
+    model = nn.DataParallel(model)
     optimizer = torch.optim.SGD(
             model.parameters(), lr=0.1, momentum=0.9
         )
@@ -58,6 +57,7 @@ def pretraining(max_epochs=100, batch_size=512, num_workers=40, cropping=None, t
     return model, pretrain_loss
 
 def addclassifier(model, num_classes):
+    model = model.module
     for name , param in model.resnet.named_parameters():
         param.requires_grad = False
 
@@ -188,7 +188,7 @@ def run_trial(method, crop_size, std, trial_num, num_workers, pretrain_epoch, ba
     std_scale = std
     pad = True
     reg = False
-    if method == 'GCC_regularization':
+    if method == 'gcc':
         pad = False
         reg = True
 
@@ -225,8 +225,7 @@ if __name__ == '__main__':
     methods = ['GCC_Padding']
     crop_sizes = [0.4, 0.6, 0.8]
     num_of_trials = 4
-    stds = [0.001, 0.01, 0.1, 1, 10, 100, 1000]
-
+    stds =  [1.8, 2.1, 2.4, 2.7,3.0,3.4,3.7]
     # Parallelize the runs for trials only
     results = {}
     for method in methods:
@@ -237,17 +236,15 @@ if __name__ == '__main__':
                 results[method][crop_size][std] = []
                 # Parallelize trials for each parameter combination
                 print(f"Method: {method}, Crop Size: {crop_size}, std: {std}")
-
-                with MyPool(processes=4) as pool:
-                    trial_results = [pool.apply(run_trial, 
-                                        args=(method, crop_size, std, trial_num, num_workers, pretrain_epoch, batchsize, hidden_dim, clf_epochs)) 
-                                        for trial_num in range(num_of_trials)]
-                    pool.close()
-                    pool.join()
-                # Retrieve results from trials
-                for trial_result in trial_results:
-                    test_accuracy, val_accuracy, train_accuracy = trial_result
-                    results[method][crop_size][std].append((test_accuracy, val_accuracy, train_accuracy))
+                trial_result = run_trial(method, crop_size, 
+                                              std,1, num_workers,
+                                              pretrain_epoch, batchsize,
+                                              hidden_dim, clf_epochs)
+                 
+               # Retrieve results from trials
+               
+                test_accuracy, val_accuracy, train_accuracy = trial_result
+                results[method][crop_size][std].append((test_accuracy, val_accuracy, train_accuracy))
 
     # Close the pool and wait for the processes to finish
    
@@ -261,5 +258,5 @@ if __name__ == '__main__':
     }
     print(final_results)
     timestamp = datetime.now().strftime('%Y_%m_%d_%H_%M')
-    with open(f'results_{timestamp}.json', 'w') as f:
+    with open(f'{method}_results_{timestamp}.json', 'w') as f:
         json.dump(final_results, f)

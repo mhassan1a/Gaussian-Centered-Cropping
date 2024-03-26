@@ -16,6 +16,8 @@ from datetime import datetime
 import multiprocessing as multiprocessing
 from multiprocessing import Manager as mp_manager
 from mlp import NestablePool as MyPool
+import argparse
+import os
 
 def train_epoch( model, dataloader, optimizer, scheduler, criterion, device):
     #one epoch of training
@@ -44,6 +46,7 @@ def pretraining(max_epochs=100, batch_size=512, num_workers=40, cropping=None, t
     train_dataset = TwoViewDataSet(root='./data', train=True, download=True, cropping=cropping, transform=transform)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
     model = Proto18(hidden_dim = hidden_dim).to(device)
+    model = nn.DataParallel(model)
     optimizer = torch.optim.SGD(
             model.parameters(), lr=0.1, momentum=0.9
         )
@@ -58,6 +61,7 @@ def pretraining(max_epochs=100, batch_size=512, num_workers=40, cropping=None, t
     return model, pretrain_loss
 
 def addclassifier(model, num_classes):
+    model = model.module
     for name , param in model.resnet.named_parameters():
         param.requires_grad = False
 
@@ -189,7 +193,7 @@ def run_trial(method, crop_size, std, trial_num, num_workers, pretrain_epoch, ba
     std_scale = std
     pad = True
     reg = False
-    if method == 'GCC_regularization':
+    if method == 'gccr': # Gaussian Cropping with Regularisation
         pad = False
         reg = True
 
@@ -215,18 +219,36 @@ def run_trial(method, crop_size, std, trial_num, num_workers, pretrain_epoch, ba
     print(f"Method: {method}, Crop Size: {crop_size}, std: {std}, Trial: {trial_num}, Test Accuracy: {test_accuracy}, Val Accuracy: {val_accuracy}, Train Accuracy: {train_accuracy}")
     return test_accuracy, val_accuracy, train_accuracy
 
+
+argparser = argparse.ArgumentParser()
+argparser.add_argument('--method', type=str, default='gccr',required=True)
+argparser.add_argument('--crop_size', type=float, nargs='+',required=True)
+argparser.add_argument('--std', type=float, nargs='+')
+argparser.add_argument('--num_of_trials', type=int, default=1,required=True)
+argparser.add_argument('--pretrain_epoch', type=int, default=150,required=True)
+argparser.add_argument('--num_workers', type=int, default=4,required=True)
+argparser.add_argument('--hidden_dim', type=int, default=256,required=True)
+argparser.add_argument('--batchsize', type=int, default=512,required=True)
+argparser.add_argument('--clf_epochs', type=int, default=100,required=True)
+argparser.add_argument('--dataset', type=str, default='cifar10', required=False)
+argparser.add_argument('--model', type=str, default='Proto18', required=False)
+args = argparser.parse_args()
+
+print(args)
+
 if __name__ == '__main__':
     # config
-    pretrain_epoch = 150
-    num_workers = 4
-    hidden_dim = 256
-    batchsize = 512
-    clf_epochs = 100
-
-    methods = ['GCC_regularization']
-    crop_sizes = [0.4, 0.6, 0.8]
-    num_of_trials = 4
-    stds = [0.001, 0.01, 0.1, 1, 10, 100, 1000]
+    pretrain_epoch = args.pretrain_epoch
+    num_workers = args.num_workers
+    hidden_dim = args.hidden_dim
+    batchsize = args.batchsize
+    clf_epochs = args.clf_epochs
+    methods = args.method
+    crop_sizes = args.crop_size
+    num_of_trials = args.num_of_trials
+    job_id = os.environ.get('SLURM_JOB_ID')
+    stds = args.std
+                
 
     # Parallelize the runs for trials only
     results = {}
@@ -242,15 +264,12 @@ if __name__ == '__main__':
                     trial_results = [pool.apply(run_trial, 
                                         args=(method, crop_size, std, trial_num, num_workers, pretrain_epoch, batchsize, hidden_dim, clf_epochs)) 
                                         for trial_num in range(num_of_trials)]
-                    pool.close()
                     pool.join()
                 print(f"Method: {method}, Crop Size: {crop_size}, std: {std}")
-                # Retrieve results from trials
                 for trial_result in trial_results:
                     test_accuracy, val_accuracy, train_accuracy = trial_result
                     results[method][crop_size][std].append((test_accuracy, val_accuracy, train_accuracy))
 
-    # Close the pool and wait for the processes to finish
    
     # Save the final results to a JSON file
     final_results = {
@@ -258,9 +277,22 @@ if __name__ == '__main__':
         'epoch': pretrain_epoch,
         'num_classes_workers': num_workers,
         'hidden_dim': hidden_dim,
-        'batch_size': batchsize
+        'batch_size': batchsize,
+        'clf_epochs': clf_epochs,
+        'Job_id': job_id,
+        'method': methods,
+        'crop_size': crop_sizes,
+        'std': stds,
+        'num_of_trials': num_of_trials,        
     }
-    print(final_results)
-    timestamp = datetime.now().strftime('%Y_%m_%d_%H_%M')
-    with open(f'results_{timestamp}.json', 'w') as f:
+    
+    timestamp = datetime.now().strftime('%Y_%m_%d_%H_')
+    with open(f'{job_id}_{method}_results_{timestamp}.json', 'w') as f:
         json.dump(final_results, f)
+        
+    print('Results saved successfully!')
+    print('job_id:', args.job_id)
+    print('Timestamp:')
+    print(timestamp)
+    print('Results:')
+    print(final_results)
