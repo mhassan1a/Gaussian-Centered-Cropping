@@ -20,8 +20,6 @@ class Proto18(nn.Module):
         self.resnet.maxpool = nn.MaxPool2d(kernel_size=2, stride=1, padding=1, dilation=1, ceil_mode=False)
 #         num_features = self.resnet.fc.in_features
 #         self.resnet.fc = SimCLRProjectionHead(num_features, num_features*4, 10)
-
-
     def forward(self, x):
         return self.resnet(x)
     

@@ -243,7 +243,7 @@ if __name__ == '__main__':
     hidden_dim = args.hidden_dim
     batchsize = args.batchsize
     clf_epochs = args.clf_epochs
-    methods = args.method
+    methods = [args.method]
     crop_sizes = args.crop_size
     num_of_trials = args.num_of_trials
     job_id = os.environ.get('SLURM_JOB_ID')
