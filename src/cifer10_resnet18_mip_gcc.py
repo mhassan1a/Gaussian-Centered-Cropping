@@ -1,5 +1,5 @@
 from misc import EarlyStopper
-from datasets import TwoViewDataSet
+from datasets import TwoViewCifar10, TwoViewCifar100, TwoViewImagenet64
 from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, ToTensor
 from cropping import GaussianCrops
@@ -18,6 +18,7 @@ from multiprocessing import Manager as mp_manager
 from mlp import NestablePool as MyPool
 import argparse
 import os
+import sys
 
 def train_epoch( model, dataloader, optimizer, scheduler, criterion, device):
     #one epoch of training
@@ -38,14 +39,14 @@ def train_epoch( model, dataloader, optimizer, scheduler, criterion, device):
     scheduler.step()
     return np.mean(losses)
 
-def pretraining(max_epochs=100, batch_size=512, num_workers=40, cropping=None, transform=None, hidden_dim=256):
+def pretraining(MODEL,DATASET,max_epochs=100, batch_size=512, num_workers=40, cropping=None, transform=None, hidden_dim=256):
     print(f"GPU Availble:{torch.cuda.is_available()}")
     print('Pre-Traing Starts ...')
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Device: {device}")
-    train_dataset = TwoViewDataSet(root='./data', train=True, download=True, cropping=cropping, transform=transform)
+    train_dataset = DATASET(root='./data', train=True, download=True, cropping=cropping, transform=transform)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
-    model = Proto18(hidden_dim = hidden_dim).to(device)
+    model = MODEL(hidden_dim = hidden_dim).to(device)
     model = nn.DataParallel(model)
     optimizer = torch.optim.SGD(
             model.parameters(), lr=0.1, momentum=0.9
@@ -176,7 +177,7 @@ def train_classifier(model, max_epochs=100, earlystop_patience=10, num_workers=1
     return test_accuracy , val_accuracy, train_accuracy
 
 
-def run_trial(method, crop_size, std, trial_num, num_workers, pretrain_epoch, batchsize, hidden_dim, clf_epochs):
+def run_trial(MODEL, DATASET, method, crop_size, std, trial_num, num_workers, pretrain_epoch, batchsize, hidden_dim, clf_epochs):
     view_transform = transforms.Compose([
         transforms.ToPILImage(),
         transforms.RandomHorizontalFlip(),
@@ -203,7 +204,9 @@ def run_trial(method, crop_size, std, trial_num, num_workers, pretrain_epoch, ba
                          padding=pad,
                          regularised_crop=reg)
 
-    model, pretrain_loss = pretraining(max_epochs=pretrain_epoch,
+    model, pretrain_loss = pretraining(MODEL= MODEL,
+                                       DATASET=DATASET,
+                                       max_epochs=pretrain_epoch,
                                        batch_size=batchsize,
                                        num_workers=num_workers,
                                        cropping=crop,
@@ -230,9 +233,20 @@ argparser.add_argument('--num_workers', type=int, default=4,required=True)
 argparser.add_argument('--hidden_dim', type=int, default=256,required=True)
 argparser.add_argument('--batchsize', type=int, default=512,required=True)
 argparser.add_argument('--clf_epochs', type=int, default=100,required=True)
-argparser.add_argument('--dataset', type=str, default='cifar10', required=False)
+argparser.add_argument('--dataset', type=str, default='Cifar10', required=False, help='Pretraining dataset')
 argparser.add_argument('--model', type=str, default='Proto18', required=False)
 args = argparser.parse_args()
+
+Dataset_lookup = {
+                  'Cifar10': TwoViewCifar10, 
+                  'Cifar100': TwoViewCifar100, 
+                  'Imagenet64': TwoViewImagenet64
+                  }
+
+Model_lookup = {
+                'Proto18': Proto18
+                }
+
 
 print(args)
 
@@ -248,7 +262,8 @@ if __name__ == '__main__':
     num_of_trials = args.num_of_trials
     job_id = os.environ.get('SLURM_JOB_ID')
     stds = args.std
-                
+    MODEL = Model_lookup[args.model]
+    DATASET = Dataset_lookup[args.dataset]          
 
     # Parallelize the runs for trials only
     results = {}
@@ -259,10 +274,10 @@ if __name__ == '__main__':
             for std in stds:
                 results[method][crop_size][std] = []
                 # Parallelize trials for each parameter combination
-                print(f"Method: {method}, Crop Size: {crop_size}, std: {std}")
+                print(f"Method: {method}, Crop Size: {crop_size}, std: {std},Dataset: {DATASET.__name__}, Model: {MODEL.__name__}")
                 with MyPool(processes=4) as pool:
                     trial_results = [pool.apply(run_trial, 
-                                        args=(method, crop_size, std, trial_num, num_workers, pretrain_epoch, batchsize, hidden_dim, clf_epochs)) 
+                                        args=(MODEL, DATASET,method, crop_size, std, trial_num, num_workers, pretrain_epoch, batchsize, hidden_dim, clf_epochs)) 
                                         for trial_num in range(num_of_trials)]
                     pool.close()
                     pool.join()
