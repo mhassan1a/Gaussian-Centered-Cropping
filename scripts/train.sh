@@ -19,5 +19,11 @@ echo "Starting Job"
 #python ./src/cifer10_resnet18_mip_gccn.py #162140, 162143, 162176
 #python ./src/cifer10_resnet18_mip_rc.py #162141
 # Method: gcc(Gassian Center Crops with padding), gccr(Gaussian Center Crops Regularzed), rc
+
 echo $SLURM_JOB_ID
-python ./src/cifer10_resnet18_mip_gcc.py --method 'gcc' --crop_size 0.4 --std 0.001 0.01 0.1 0.5 1 1.5 2 3 5 100 200 --num_of_trials 4 --pretrain_epoch 150 --num_workers 4 --hidden_dim 128 --batchsize 512 --clf_epochs 100 
+#python ./src/cifer10_resnet18_mip_gcc.py --method 'gcc' --crop_size 0.6 --std 0.001 0.01 0.1 0.5 1 1.5 2 3 5 100 200 --num_of_trials 4 --pretrain_epoch 150 --num_workers 4 --hidden_dim 256 --batchsize 512 --clf_epochs 100 
+#python ./src/cifer10_resnet18_mip_gcc.py --method 'gccr' --crop_size 0.6 --std 0.001 0.01 0.1 0.5 1 1.5 2 3 5 100 200 --num_of_trials 4 --pretrain_epoch 150 --num_workers 4 --hidden_dim 256 --batchsize 512 --clf_epochs 100 
+#python ./src/cifer10_resnet18_mip_gcc.py --method 'gcc' --crop_size 0.4 --std 0.001 0.01 0.1 0.5 1 1.5 2 3 5 100 200 --num_of_trials 4 --pretrain_epoch 150 --num_workers 4 --hidden_dim 256 --batchsize 512 --clf_epochs 100 
+#python ./src/cifer10_resnet18_mip_gcc.py --method 'gccr' --crop_size 0.4 --std 0.001 0.01 0.1 0.5 1 1.5 2 3 5 100 200 --num_of_trials 4 --pretrain_epoch 150 --num_workers 4 --hidden_dim 256 --batchsize 512 --clf_epochs 100
+#python ./src/cifer10_resnet18_mip_gcc.py --method 'gcc' --crop_size 0.8 --std 0.001 0.01 0.1 0.5 1 1.5 2 3 5 100 200 --num_of_trials 4 --pretrain_epoch 150 --num_workers 4 --hidden_dim 256 --batchsize 512 --clf_epochs 100 
+#python ./src/cifer10_resnet18_mip_gcc.py --method 'gccr' --crop_size 0.8 --std 0.001 0.01 0.1 0.5 1 1.5 2 3 5 100 200 --num_of_trials 4 --pretrain_epoch 150 --num_workers 4 --hidden_dim 256 --batchsize 512 --clf_epochs 100  

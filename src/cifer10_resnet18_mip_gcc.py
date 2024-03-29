@@ -264,8 +264,9 @@ if __name__ == '__main__':
                     trial_results = [pool.apply(run_trial, 
                                         args=(method, crop_size, std, trial_num, num_workers, pretrain_epoch, batchsize, hidden_dim, clf_epochs)) 
                                         for trial_num in range(num_of_trials)]
+                    pool.close()
                     pool.join()
-                print(f"Method: {method}, Crop Size: {crop_size}, std: {std}")
+                    
                 for trial_result in trial_results:
                     test_accuracy, val_accuracy, train_accuracy = trial_result
                     results[method][crop_size][std].append((test_accuracy, val_accuracy, train_accuracy))
@@ -291,7 +292,7 @@ if __name__ == '__main__':
         json.dump(final_results, f)
         
     print('Results saved successfully!')
-    print('job_id:', args.job_id)
+    print('job_id:', job_id)
     print('Timestamp:')
     print(timestamp)
     print('Results:')
