@@ -9,7 +9,7 @@ from torchvision.transforms import transforms
 
 class GaussianCrops:
     def __init__(self, crop_percentage=0.4, seed=None, std_scale=1 ,
-                 padding=False, regularised_crop=False):
+                 padding=False, regularised_crop=False, adaptive_center=False):
         """Initialization method for the cropping class.
             
             Args:
@@ -24,6 +24,7 @@ class GaussianCrops:
         self.std_scale = std_scale
         self.padding = padding
         self.regularised_crop = regularised_crop
+        self.adaptive_center = adaptive_center
         
     def gcc(self, img):
         """
@@ -44,10 +45,16 @@ class GaussianCrops:
         
         std_x = width  * self.std_scale
         std_y = height  * self.std_scale
+        mean_x, mean_y = [width / 2, height / 2]
+        
+        if self.adaptive_center:
+            mean_x = np.random.uniform(width * 0.25, width * 0.75)
+            mean_y = np.random.uniform(height * 0.25, height * 0.75)
         
         if self.seed is not None:
             np.random.seed(self.seed)
-        centers = np.random.multivariate_normal([width / 2, height / 2], [[std_x, 0], [0, std_y]], 2)
+        centers = np.random.multivariate_normal([mean_x,mean_y], [[std_x, 0], [0, std_y]], 2)
+        
         crops = []
         for center in centers:
             center_x, center_y = center

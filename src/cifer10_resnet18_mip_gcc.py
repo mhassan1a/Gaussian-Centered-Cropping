@@ -177,7 +177,7 @@ def train_classifier(model, max_epochs=100, earlystop_patience=10, num_workers=1
     return test_accuracy , val_accuracy, train_accuracy
 
 
-def run_trial(MODEL, DATASET, method, crop_size, std, trial_num, num_workers, pretrain_epoch, batchsize, hidden_dim, clf_epochs):
+def run_trial(MODEL, DATASET, method, crop_size, adaptive_center , std, trial_num, num_workers, pretrain_epoch, batchsize, hidden_dim, clf_epochs):
     view_transform = transforms.Compose([
         transforms.ToPILImage(),
         transforms.RandomHorizontalFlip(),
@@ -202,7 +202,8 @@ def run_trial(MODEL, DATASET, method, crop_size, std, trial_num, num_workers, pr
                          seed=seed,
                          std_scale=std_scale,
                          padding=pad,
-                         regularised_crop=reg)
+                         regularised_crop=reg,
+                         adaptive_center=adaptive_center,)
 
     model, pretrain_loss = pretraining(MODEL= MODEL,
                                        DATASET=DATASET,
@@ -235,6 +236,7 @@ argparser.add_argument('--batchsize', type=int, default=512,required=True)
 argparser.add_argument('--clf_epochs', type=int, default=100,required=True)
 argparser.add_argument('--dataset', type=str, default='Cifar10', required=False, help='Pretraining dataset')
 argparser.add_argument('--model', type=str, default='Proto18', required=False)
+argparser.add_argument('--adaptive_center', type=bool, default=False, required=False)
 args = argparser.parse_args()
 
 Dataset_lookup = {
@@ -262,6 +264,7 @@ if __name__ == '__main__':
     num_of_trials = args.num_of_trials
     job_id = os.environ.get('SLURM_JOB_ID')
     stds = args.std
+    adaptive_center = args.adaptive_center
     MODEL = Model_lookup[args.model]
     DATASET = Dataset_lookup[args.dataset]          
 
@@ -277,7 +280,7 @@ if __name__ == '__main__':
                 print(f"Method: {method}, Crop Size: {crop_size}, std: {std},Dataset: {DATASET.__name__}, Model: {MODEL.__name__}")
                 with MyPool(processes=4) as pool:
                     trial_results = [pool.apply(run_trial, 
-                                        args=(MODEL, DATASET,method, crop_size, std, trial_num, num_workers, pretrain_epoch, batchsize, hidden_dim, clf_epochs)) 
+                                        args=(MODEL, DATASET,method, crop_size, adaptive_center, std, trial_num, num_workers, pretrain_epoch, batchsize, hidden_dim, clf_epochs)) 
                                         for trial_num in range(num_of_trials)]
                     pool.close()
                     pool.join()
