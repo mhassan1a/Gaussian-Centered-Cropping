@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from PIL import Image
 from torchvision.transforms.functional import crop
 from torchvision.transforms import transforms
+from mpl_toolkits.axes_grid1 import ImageGrid
 
 class GaussianCrops:
     def __init__(self, crop_percentage=0.4, seed=None, std_scale=1 ,
@@ -39,17 +40,17 @@ class GaussianCrops:
         Returns:
         - List of np.arrays: with two views of the cropped image.     
         """
-        width, height = img.shape[1], img.shape[0]
-        crop_width = int(width * np.sqrt(self.crop_percentage))
-        crop_height = int(height * np.sqrt(self.crop_percentage))
+        image_width, image_height = img.shape[1], img.shape[0]
+        crop_width = int(image_width * np.sqrt(self.crop_percentage))
+        crop_height = int(image_height * np.sqrt(self.crop_percentage))
         
-        std_x = width  * self.std_scale
-        std_y = height  * self.std_scale
-        mean_x, mean_y = [width / 2, height / 2]
+        std_x = image_width  * self.std_scale
+        std_y = image_height  * self.std_scale
+        mean_x, mean_y = [image_width // 2, image_height // 2]
         
         if self.adaptive_center:
-            mean_x = np.random.uniform(width * 0.25, width * 0.75)
-            mean_y = np.random.uniform(height * 0.25, height * 0.75)
+            mean_x = np.random.uniform(image_width * 0.25, image_width * 0.75)
+            mean_y = np.random.uniform(image_height * 0.25, image_height * 0.75)
         
         if self.seed is not None:
             np.random.seed(self.seed)
@@ -57,47 +58,88 @@ class GaussianCrops:
         
         crops = []
         for center in centers:
-            center_x, center_y = center
-            left = int(max(0, int(center_x - crop_width / 2)))
-            top = int(max(0, int(center_y - crop_height / 2)))
-            bottom = top + crop_height if top + crop_height < height else height
-            right = left + crop_width if left + crop_width < width else width
-            cropped_image = img[top:bottom, left:right]
+            center_x, center_y = int(center[0]), int(center[1])
+            left = center_x - crop_width // 2
+            top =  center_y - crop_height // 2
+            bottom = top + crop_height 
+            right = left + crop_width 
+            
+            print('left:', left, 'top:', top, 'bottom:', bottom, 'right:', right)
             
             if self.regularised_crop:
-                if bottom - top < crop_height:
+                if top < 0:
+                    top = 0
+                    bottom = crop_height
+                if left < 0:
+                    left = 0
+                    right = crop_width
+                if bottom > image_height:
+                    bottom = image_height
                     top = bottom - crop_height
-                if right - left < crop_width:
-                    left = right - crop_width
+                if right > image_width:
+                    right = image_width
+                    left = right - crop_width             
+                   
+       
+            if self.padding:
+                if left < 0 and right> 0:
+                    left = 0
+                    pad_left = crop_width - right
+                    pad_right = 0
+                elif right > image_width and left < image_width:
+                    right = image_width
+                    pad_left = 0
+                    pad_right = right - image_width
+                elif left <= 0 and right <=0:
+                    left = 0
+                    right = 0
+                    pad_left = crop_width
+                    pad_right = 0 
+                elif left >= image_width and right >= image_width:
+                    left = 0
+                    right = 0
+                    pad_left = 0
+                    pad_right = crop_width                   
+                else:
+                    pad_left = 0
+                    pad_right = 0
+                    
+                if top < 0 and bottom > 0:
+                    top = 0
+                    pad_top = crop_height - bottom
+                    pad_bottom = 0
+                elif bottom > image_height and top < image_height:
+                    bottom = image_height
+                    pad_top = 0
+                    pad_bottom = bottom - image_height
+                elif top <= 0 and bottom <= 0:
+                    top = 0
+                    bottom = 0
+                    pad_top = crop_height
+                    pad_bottom = 0
+                elif top >= image_height and bottom >= image_height:
+                    top = 0
+                    bottom = 0
+                    pad_top = 0
+                    pad_bottom = crop_height
+                else:
+                    pad_top = 0
+                    pad_bottom = 0
+                 
+            if bottom - top < crop_height:
+                pad_top = (crop_height - (bottom - top)) // 2
+                pad_bottom = crop_height - (bottom - top) - pad_top   
+            if right - left < crop_width:
+                pad_left = (crop_width - (right - left)) // 2
+                pad_right = crop_width - (right - left) - pad_left
                     
             cropped_image = img[top:bottom, left:right]
-            
-        
-            if self.padding:
-                cropped_image = img[top:bottom, left:right]
-                pad_top = max(0, crop_height - (bottom - top))
-                pad_bottom = max(0, crop_height - (bottom - top))
-                pad_left = max(0, crop_width - (right - left))
-                pad_right = max(0, crop_width - (right - left))
-                cropped_image = np.pad(cropped_image, ((pad_top, pad_bottom),
-                    (pad_left, pad_right), (0, 0)), mode='constant')
-                
-            if cropped_image.shape[0] > crop_height:
-                cropped_image = cropped_image[:crop_height]
-            if cropped_image.shape[1] > crop_width:
-                cropped_image = cropped_image[:, :crop_width]
-            
-            if cropped_image.shape[0] < crop_height:
-                pad_top = (crop_height - cropped_image.shape[0]) // 2
-                pad_bottom = crop_height - cropped_image.shape[0] - pad_top
-                cropped_image = np.pad(cropped_image, ((pad_top, pad_bottom), (0, 0), (0, 0)), mode='constant')
-            if cropped_image.shape[1] < crop_width:
-                pad_left = (crop_width - cropped_image.shape[1]) // 2
-                pad_right = crop_width - cropped_image.shape[1] - pad_left
-                cropped_image = np.pad(cropped_image, ((0, 0), (pad_left, pad_right), (0, 0)), mode='constant')
-                
-            crops.append(cropped_image) 
-                    
+            cropped_image = np.pad(cropped_image, ((pad_top, pad_bottom),
+                (pad_left, pad_right), (0, 0)), mode='constant')
+             
+            assert cropped_image.shape[0] == crop_height
+            assert cropped_image.shape[1] == crop_width         
+            crops.append(cropped_image)
         return crops
     
 class UniformCrops:
@@ -134,130 +176,175 @@ class UniformCrops:
         Returns:
         - List of np.arrays: with two views of the cropped image.     
         """
-        width, height = img.shape[1], img.shape[0]
-        crop_width = int(width * np.sqrt(self.crop_percentage))
-        crop_height = int(height * np.sqrt(self.crop_percentage))
+        image_width, image_height = img.shape[1], img.shape[0]
+        crop_width = int(image_width * np.sqrt(self.crop_percentage))
+        crop_height = int(image_height * np.sqrt(self.crop_percentage))
         
-        min_hight = height//2 - int(width * self.min_scale)
-        max_hight=  height//2 + int(width * self.max_scale)
+        min_hight = image_height//2 - int(image_width * self.min_scale)
+        max_hight=  image_height//2 + int(image_width * self.max_scale)
         
-        min_width = width//2 - int(height * self.min_scale)
-        max_width = width//2 + int(height * self.max_scale)
+        min_width = image_width//2 - int(image_height * self.min_scale)
+        max_width = image_width//2 + int(image_height * self.max_scale)
         
         if self.seed is not None:
             np.random.seed(self.seed)
-        centers = np.random.uniform([width / 2, height / 2],
+        centers = np.random.uniform([image_width / 2, image_height / 2],
                                     [[min_hight, min_width], [max_hight, max_width]], (2, 2))
         crops = []
         for center in centers:
-            center_x, center_y = center
-            left = int(max(0, int(center_x - crop_width / 2)))
-            top = int(max(0, int(center_y - crop_height / 2)))
-            bottom = top + crop_height if top + crop_height < height else height
-            right = left + crop_width if left + crop_width < width else width
-            cropped_image = img[top:bottom, left:right]
+            center_x, center_y = int(center[0]), int(center[1])
+            left = center_x - crop_width // 2
+            top =  center_y - crop_height // 2
+            bottom = top + crop_height 
+            right = left + crop_width 
+            
+            print('left:', left, 'top:', top, 'bottom:', bottom, 'right:', right)
             
             if self.regularised_crop:
-                if bottom - top < crop_height:
+                if top < 0:
+                    top = 0
+                    bottom = crop_height
+                if left < 0:
+                    left = 0
+                    right = crop_width
+                if bottom > image_height:
+                    bottom = image_height
                     top = bottom - crop_height
-                if right - left < crop_width:
-                    left = right - crop_width
+                if right > image_width:
+                    right = image_width
+                    left = right - crop_width             
+                   
+       
+            if self.padding:
+                if left < 0 and right> 0:
+                    left = 0
+                    pad_left = crop_width - right
+                    pad_right = 0
+                elif right > image_width and left < image_width:
+                    right = image_width
+                    pad_left = 0
+                    pad_right = right - image_width
+                elif left <= 0 and right <=0:
+                    left = 0
+                    right = 0
+                    pad_left = crop_width
+                    pad_right = 0 
+                elif left >= image_width and right >= image_width:
+                    left = 0
+                    right = 0
+                    pad_left = 0
+                    pad_right = crop_width                   
+                else:
+                    pad_left = 0
+                    pad_right = 0
+                    
+                if top < 0 and bottom > 0:
+                    top = 0
+                    pad_top = crop_height - bottom
+                    pad_bottom = 0
+                elif bottom > image_height and top < image_height:
+                    bottom = image_height
+                    pad_top = 0
+                    pad_bottom = bottom - image_height
+                elif top <= 0 and bottom <= 0:
+                    top = 0
+                    bottom = 0
+                    pad_top = crop_height
+                    pad_bottom = 0
+                elif top >= image_height and bottom >= image_height:
+                    top = 0
+                    bottom = 0
+                    pad_top = 0
+                    pad_bottom = crop_height
+                else:
+                    pad_top = 0
+                    pad_bottom = 0
+                 
+            if bottom - top < crop_height:
+                pad_top = (crop_height - (bottom - top)) // 2
+                pad_bottom = crop_height - (bottom - top) - pad_top   
+            if right - left < crop_width:
+                pad_left = (crop_width - (right - left)) // 2
+                pad_right = crop_width - (right - left) - pad_left
                     
             cropped_image = img[top:bottom, left:right]
-        
-            if self.padding:
-                cropped_image = img[top:bottom, left:right]
-                pad_top = max(0, crop_height - (bottom - top))
-                pad_bottom = max(0, crop_height - (bottom - top))
-                pad_left = max(0, crop_width - (right - left))
-                pad_right = max(0, crop_width - (right - left))
-                cropped_image = np.pad(cropped_image, ((pad_top, pad_bottom),
-                    (pad_left, pad_right), (0, 0)), mode='constant')
-                
-            if cropped_image.shape[0] > crop_height:
-                cropped_image = cropped_image[:crop_height]
-            if cropped_image.shape[1] > crop_width:
-                cropped_image = cropped_image[:, :crop_width]
-                
-            if cropped_image.shape[0] < crop_height:
-                pad_top = (crop_height - cropped_image.shape[0]) // 2
-                pad_bottom = crop_height - cropped_image.shape[0] - pad_top
-                cropped_image = np.pad(cropped_image, ((pad_top, pad_bottom), (0, 0), (0, 0)), mode='constant')
-                
-            if cropped_image.shape[1] < crop_width:
-                pad_left = (crop_width - cropped_image.shape[1]) // 2
-                pad_right = crop_width - cropped_image.shape[1] - pad_left
-                cropped_image = np.pad(cropped_image, ((0, 0), (pad_left, pad_right), (0, 0)), mode='constant')
-                
+            cropped_image = np.pad(cropped_image, ((pad_top, pad_bottom),
+                (pad_left, pad_right), (0, 0)), mode='constant')
+             
+            assert cropped_image.shape[0] == crop_height
+            assert cropped_image.shape[1] == crop_width         
             crops.append(cropped_image)
-            
         return crops
-
+    
+    
 if __name__ == "__main__":
-    img = Image.open("pic1.jpg")
+    img = Image.open("g44yy1dz.bmp")
     img = np.array(img)
 
-
-    # gaussian centered cropping    
-    num_samples = 10
+    num_samples = 12
     num_views = 2
-    images = [] 
-
-    # Calculate the grid size
-    grid_size = int(np.ceil(np.sqrt(num_samples * num_views)))
+    padding = True
+    regularised_crop = False
 
     # Create a new figure
-    plt.figure(figsize=(10, 10))
-
+    crops1 = []
     for i in range(num_samples):
-        crop_percentage = 0.4
+        crop_percentage = 0.2
         seed = None
-        std_scale = 100
-        crop = GaussianCrops(crop_percentage = crop_percentage, seed = seed, 
-                            std_scale = std_scale, padding=False,regularised_crop=True)
-        cropped_images = crop.gcc(img)#,  regularised_crop=True)
-        images.append(cropped_images)
-        # Display cropped images
-        for j, cropped_image in enumerate(cropped_images):
-            # Calculate the subplot index
-            index = i * num_views + j + 1
-            plt.subplot(grid_size, grid_size, index)
-            plt.imshow(cropped_image)
-            plt.title("Sample {}, View {}".format(i+1, j+1))
+        adaptive_center = True
+        std_scale = 2.5
+        crop = GaussianCrops(crop_percentage=crop_percentage,
+                            seed=seed,
+                            std_scale=std_scale,
+                            padding=padding,
+                            regularised_crop=regularised_crop,
+                            adaptive_center=adaptive_center)
+        cropped_images = crop.gcc(img)
+        crops1.extend(cropped_images)
+    num_images = len(crops1)
+    spacing = 0.05
+    num_cols = 6
+    num_rows = (num_images + num_cols - 1) // num_cols
+    fig = plt.figure(figsize=(12, 12))
+    grid = ImageGrid(fig, 111,  # similar to subplot(111)
+                     nrows_ncols=(num_rows, num_cols),
+                     axes_pad=spacing,  # spacing between images
+                     )
 
-    # Adjust layout
-    plt.tight_layout()
+    for ax, image in zip(grid, crops1):
+        ax.imshow(image)
+        ax.axis("off")
+    plt.title("Gaussian Cropping with adaptive center")
+    plt.legend()
     plt.show()
-
-    # uniform centered cropping
-    num_samples = 10
-    num_views = 2
-    images = []
-
-    # Calculate the grid size
-    grid_size = int(np.ceil(np.sqrt(num_samples * num_views)))
-
-    # Create a new figure
-    plt.figure(figsize=(10, 10))   
-
+    plt.savefig(f"gcc_adp_std_{std_scale}_cropsize_{crop_percentage}.jpg")
+    crops2 = []
     for i in range(num_samples):
-        crop_percentage = 0.4
+        crop_percentage = 0.2
         seed = None
-        min_scale = -0.5
-        max_scale = 0.5
-        
-        crop = UniformCrops(crop_percentage = crop_percentage, seed = seed, padding=True, 
-                            regularised_crop=False, min_scale=min_scale, max_scale=max_scale)
-        cropped_images = crop.ucc(img)
-        images.append(cropped_images)
-        # Display cropped images
-        for j, cropped_image in enumerate(cropped_images):
-            # Calculate the subplot index
-            index = i * num_views + j + 1
-            plt.subplot(grid_size, grid_size, index)
-            plt.imshow(cropped_image)
-            plt.title("Sample {}, View {}".format(i+1, j+1))
+        adaptive_center = False
+        std_scale = 10
+        crop = GaussianCrops(crop_percentage=crop_percentage,
+                            seed=seed,
+                            std_scale=std_scale,
+                            padding=padding,
+                            regularised_crop=regularised_crop,
+                            adaptive_center=adaptive_center)
+        cropped_images = crop.gcc(img)
+        crops2.extend(cropped_images)
+    num_images = len(crops2)
+    spacing = 0.05
+    num_cols = 6
+    num_rows = (num_images + num_cols - 1) // num_cols
+    fig = plt.figure(figsize=(12, 12))
+    grid = ImageGrid(fig, 111,  # similar to subplot(111)
+                     nrows_ncols=(num_rows, num_cols),
+                     axes_pad=spacing,  # spacing between images
+                     )
 
-    # Adjust layout
-    plt.tight_layout()
+    for ax, image in zip(grid, crops2):
+        ax.imshow(image)
+        ax.axis("off")
+    plt.title("Gaussian Cropping without adaptive center")
     plt.show()
+    plt.savefig(f"gcc_not_adp_std_{std_scale}_cropsize_{crop_percentage}.jpg")
