@@ -56,7 +56,6 @@ class TwoViewImagenet64(ImageNetDownSample):
           
     def __getitem__(self, index):
         x, target = self.train_data[index], self.train_labels[index]
-
         if self.cropping is not None:
             view1, view2 = self.cropping.gcc(x)
         else:
@@ -75,14 +74,19 @@ if __name__ == '__main__':
         print(x1.shape, x2.shape, target.shape)
         break
     
+    
+    import time
+    start = time.time()
     train_dataset = TwoViewImagenet64(root='./data/Imagenet64_train', train=True)
-    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=512,num_workers=0, shuffle=True)
     for x1, x2, target in train_loader:
         print(x1.shape, x2.shape, target.shape)
         break
+    print(time.time()-start)
     
     train_dataset = TwoViewCifar100(root='./data', train=True, download=False)
-    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=32,num_workers=4, shuffle=True)
+    
     for x1, x2, target in train_loader:
         print(x1.shape, x2.shape, target.shape)
         break

@@ -44,10 +44,11 @@ def pretraining(MODEL,DATASET,max_epochs=100, batch_size=512, num_workers=40, cr
     print('Pre-Traing Starts ...')
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Device: {device}")
-    train_dataset = DATASET(root='./data', train=True, download=True, cropping=cropping, transform=transform)
+    root = './data/Imagenet64_train' if DATASET.__name__ == 'TwoViewImagenet64' else './data'
+    train_dataset = DATASET(root=root, train=True, download=True, cropping=cropping, transform=transform)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
     model = MODEL(hidden_dim = hidden_dim).to(device)
-    model = nn.DataParallel(model)
+    #model = nn.DataParallel(model)
     optimizer = torch.optim.SGD(
             model.parameters(), lr=0.1, momentum=0.9
         )
@@ -97,7 +98,6 @@ def train_classifier(model, max_epochs=100, earlystop_patience=10, num_workers=1
                 std = (0.2023, 0.1994, 0.2010)
             ),
     ])
-
     train_dataset = CIFAR10(root='./data', train=True, download=False, transform=transform_train)
     test_dataset = CIFAR10(root='./data', train=False, download=False, transform=transform_test)
 
@@ -299,7 +299,9 @@ if __name__ == '__main__':
         'method': methods,
         'crop_size': crop_sizes,
         'std': stds,
-        'num_of_trials': num_of_trials,        
+        'num_of_trials': num_of_trials,     
+        'dataset': DATASET.__name__,
+        'model': MODEL.__name__  
     }
     
     timestamp = datetime.now().strftime('%Y_%m_%d_%H_')
