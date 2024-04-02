@@ -305,6 +305,8 @@ if __name__ == '__main__':
     }
     print('Results:')
     print(final_results)
+    if adaptive_center:
+        job_id = job_id+'_adaptive_'
     timestamp = datetime.now().strftime('%Y_%m_%d_%H_')
     with open(f'{job_id}_{method}_results_{timestamp}.json', 'w') as f:
         json.dump(final_results, f)
