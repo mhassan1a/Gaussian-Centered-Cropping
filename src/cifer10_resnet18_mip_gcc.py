@@ -3,7 +3,7 @@ from datasets import TwoViewCifar10, TwoViewCifar100, TwoViewImagenet64
 from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, ToTensor
 from cropping import GaussianCrops
-from models import Proto18
+from models import Proto18, Classifier
 import numpy as np
 import torch
 import torch.nn as nn
@@ -29,9 +29,7 @@ def train_epoch( model, dataloader, optimizer, scheduler, criterion, device):
         optimizer.zero_grad()
         output1 = model(view1)
         output2 = model(view2)
-        
         loss = criterion(output1, output2)
-        
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -50,8 +48,8 @@ def pretraining(MODEL,DATASET,max_epochs=100, batch_size=512, num_workers=40, cr
     model = MODEL(hidden_dim = hidden_dim).to(device)
     #model = nn.DataParallel(model)
     optimizer = torch.optim.SGD(
-            model.parameters(), lr=0.1, momentum=0.9
-        )
+                                    model.parameters(), lr=0.1, momentum=0.9
+                                )
     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[40,60,80,100,150], gamma=0.1)
     criterion = ntx_ent_loss.NTXentLoss(temperature = 0.1, memory_bank_size=0)
     train_progress = tqdm(range(max_epochs), desc='pre training', unit='epoch')
@@ -62,19 +60,14 @@ def pretraining(MODEL,DATASET,max_epochs=100, batch_size=512, num_workers=40, cr
         train_progress.set_postfix(loss=loss)
     return model, pretrain_loss
 
+
 def addclassifier(model, num_classes):
     model = model.module
     for name , param in model.resnet.named_parameters():
         param.requires_grad = False
 
     num_features = model.resnet.fc.in_features
-    classifier = nn.Sequential(
-    nn.Linear(num_features, 1024),  
-    nn.ReLU(inplace=True),
-    nn.Dropout(0.2),  
-    nn.Linear(1024, 10),
-    )  
-
+    classifier = Classifier(num_features, hidden_dim=512, num_classes=num_classes)
     model.resnet.fc = classifier
     return model
 
@@ -217,7 +210,7 @@ def run_trial(MODEL, DATASET, method, crop_size, adaptive_center , std, trial_nu
     model = addclassifier(model, 10)
     test_accuracy, val_accuracy, train_accuracy = train_classifier(model=model,
                                                                    max_epochs=clf_epochs,
-                                                                   earlystop_patience=10,
+                                                                   earlystop_patience=15,
                                                                    num_workers=num_workers)
     print()
     print(f"Method: {method}, Crop Size: {crop_size}, std: {std}, Trial: {trial_num}, Test Accuracy: {test_accuracy}, Val Accuracy: {val_accuracy}, Train Accuracy: {train_accuracy}")
@@ -277,7 +270,7 @@ if __name__ == '__main__':
             for std in stds:
                 results[method][crop_size][std] = []
                 # Parallelize trials for each parameter combination
-                print(f"Method: {method}, Crop Size: {crop_size}, std: {std},Dataset: {DATASET.__name__}, Model: {MODEL.__name__}")
+                print(f"Method: {method}, Crop Size: {crop_size}, std: {std},Dataset: {DATASET.__name__}, Model: {MODEL.__name__}, Adaptive Center: {adaptive_center}")
                 with MyPool(processes=4) as pool:
                     trial_results = [pool.apply(run_trial, 
                                         args=(MODEL, DATASET,method, crop_size, adaptive_center, std, trial_num, num_workers, pretrain_epoch, batchsize, hidden_dim, clf_epochs)) 
@@ -304,7 +297,8 @@ if __name__ == '__main__':
         'std': stds,
         'num_of_trials': num_of_trials,     
         'dataset': DATASET.__name__,
-        'model': MODEL.__name__  
+        'model': MODEL.__name__,  
+        'adaptive_center': adaptive_center,
     }
     
     timestamp = datetime.now().strftime('%Y_%m_%d_%H_')

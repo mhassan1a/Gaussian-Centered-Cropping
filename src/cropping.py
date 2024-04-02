@@ -64,7 +64,6 @@ class GaussianCrops:
             bottom = top + crop_height 
             right = left + crop_width 
             
-            print('left:', left, 'top:', top, 'bottom:', bottom, 'right:', right)
             
             if self.regularised_crop:
                 if top < 0:
@@ -198,8 +197,7 @@ class UniformCrops:
             bottom = top + crop_height 
             right = left + crop_width 
             
-            print('left:', left, 'top:', top, 'bottom:', bottom, 'right:', right)
-            
+           
             if self.regularised_crop:
                 if top < 0:
                     top = 0
@@ -289,10 +287,10 @@ if __name__ == "__main__":
     # Create a new figure
     crops1 = []
     for i in range(num_samples):
-        crop_percentage = 0.2
+        crop_percentage = 0.4
         seed = None
         adaptive_center = True
-        std_scale = 2.5
+        std_scale = 1
         crop = GaussianCrops(crop_percentage=crop_percentage,
                             seed=seed,
                             std_scale=std_scale,
@@ -320,7 +318,7 @@ if __name__ == "__main__":
     plt.savefig(f"gcc_adp_std_{std_scale}_cropsize_{crop_percentage}.jpg")
     crops2 = []
     for i in range(num_samples):
-        crop_percentage = 0.2
+        crop_percentage = 0.4
         seed = None
         adaptive_center = False
         std_scale = 10
