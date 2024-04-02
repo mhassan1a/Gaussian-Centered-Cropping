@@ -1,4 +1,4 @@
-from misc import EarlyStopper
+from misc import EarlyStopper, convert_to_normal_dict
 from datasets import TwoViewCifar10, TwoViewCifar100, TwoViewImagenet64
 from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, ToTensor
@@ -16,6 +16,8 @@ from datetime import datetime
 import multiprocessing as multiprocessing
 from multiprocessing import Manager as mp_manager
 from mlp import NestablePool as MyPool
+from concurrent.futures import ProcessPoolExecutor, as_completed
+
 import argparse
 import os
 import sys
@@ -46,11 +48,10 @@ def pretraining(MODEL,DATASET,max_epochs=100, batch_size=512, num_workers=40, cr
     train_dataset = DATASET(root=root, train=True, download=True, cropping=cropping, transform=transform)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
     model = MODEL(hidden_dim = hidden_dim).to(device)
-    #model = nn.DataParallel(model)
-    optimizer = torch.optim.SGD(
-                                    model.parameters(), lr=0.1, momentum=0.9
-                                )
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[40,60,80,100,150], gamma=0.1)
+    optimizer = torch.optim.Adam(
+            model.parameters(), lr=0.01
+        )
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer,T_max=max_epochs )
     criterion = ntx_ent_loss.NTXentLoss(temperature = 0.1, memory_bank_size=0)
     train_progress = tqdm(range(max_epochs), desc='pre training', unit='epoch')
     pretrain_loss = []
@@ -62,7 +63,6 @@ def pretraining(MODEL,DATASET,max_epochs=100, batch_size=512, num_workers=40, cr
 
 
 def addclassifier(model, num_classes):
-    model = model.module
     for name , param in model.resnet.named_parameters():
         param.requires_grad = False
 
@@ -229,7 +229,8 @@ argparser.add_argument('--batchsize', type=int, default=512,required=True)
 argparser.add_argument('--clf_epochs', type=int, default=100,required=True)
 argparser.add_argument('--dataset', type=str, default='Cifar10', required=False, help='Pretraining dataset')
 argparser.add_argument('--model', type=str, default='Proto18', required=False)
-argparser.add_argument('--adaptive_center', type=bool, default=False, required=False)
+argparser.add_argument('--adaptive_center', type=str, default='False', required=False)
+argparser.add_argument('--job_id', type=str, default=None, required=False)
 args = argparser.parse_args()
 
 Dataset_lookup = {
@@ -244,6 +245,8 @@ Model_lookup = {
 
 
 print(args)
+timestamp = datetime.now().strftime('%Y/%m/%d_%H:%M:%S')
+print('Timestamp:', timestamp)
 
 if __name__ == '__main__':
     # config
@@ -255,37 +258,37 @@ if __name__ == '__main__':
     methods = [args.method]
     crop_sizes = args.crop_size
     num_of_trials = args.num_of_trials
-    job_id = os.environ.get('SLURM_JOB_ID')
+    job_id = args.job_id
     stds = args.std
-    adaptive_center = args.adaptive_center
+    adaptive_center = True if args.adaptive_center=='True' else False
     MODEL = Model_lookup[args.model]
     DATASET = Dataset_lookup[args.dataset]          
 
     # Parallelize the runs for trials only
-    results = {}
+    mp_manager = mp_manager()
+    results = mp_manager.dict()
     for method in methods:
-        results[method] = {}
+        results[method] = mp_manager.dict()
         for crop_size in crop_sizes:
-            results[method][crop_size] = {}
+            results[method][crop_size] = mp_manager.dict()
             for std in stds:
-                results[method][crop_size][std] = []
+                results[method][crop_size][std] = mp_manager.list()
                 # Parallelize trials for each parameter combination
                 print(f"Method: {method}, Crop Size: {crop_size}, std: {std},Dataset: {DATASET.__name__}, Model: {MODEL.__name__}, Adaptive Center: {adaptive_center}")
-                with MyPool(processes=4) as pool:
-                    trial_results = [pool.apply(run_trial, 
-                                        args=(MODEL, DATASET,method, crop_size, adaptive_center, std, trial_num, num_workers, pretrain_epoch, batchsize, hidden_dim, clf_epochs)) 
+                with ProcessPoolExecutor() as pool:
+                    trial_results = [pool.submit(run_trial, 
+                                        MODEL, DATASET,method, crop_size, adaptive_center, 
+                                        std, trial_num, num_workers, pretrain_epoch, batchsize,
+                                        hidden_dim, clf_epochs) 
                                         for trial_num in range(num_of_trials)]
-                    pool.close()
-                    pool.join()
                     
-                for trial_result in trial_results:
-                    test_accuracy, val_accuracy, train_accuracy = trial_result
+                for trial_result in as_completed(trial_results):
+                    test_accuracy, val_accuracy, train_accuracy = trial_result.result()
                     results[method][crop_size][std].append((test_accuracy, val_accuracy, train_accuracy))
-
    
     # Save the final results to a JSON file
     final_results = {
-        'results': results,
+        'results': convert_to_normal_dict(results),
         'epoch': pretrain_epoch,
         'num_classes_workers': num_workers,
         'hidden_dim': hidden_dim,
@@ -300,7 +303,8 @@ if __name__ == '__main__':
         'model': MODEL.__name__,  
         'adaptive_center': adaptive_center,
     }
-    
+    print('Results:')
+    print(final_results)
     timestamp = datetime.now().strftime('%Y_%m_%d_%H_')
     with open(f'{job_id}_{method}_results_{timestamp}.json', 'w') as f:
         json.dump(final_results, f)
@@ -309,5 +313,5 @@ if __name__ == '__main__':
     print('job_id:', job_id)
     print('Timestamp:')
     print(timestamp)
-    print('Results:')
-    print(final_results)
+   
+    

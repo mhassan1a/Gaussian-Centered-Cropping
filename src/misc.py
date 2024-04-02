@@ -1,5 +1,5 @@
 #!python
-
+from multiprocessing import Process, Manager
 class EarlyStopper:
     def __init__(self, patience=1, min_delta=0):
         self.patience = patience
@@ -16,3 +16,20 @@ class EarlyStopper:
             if self.counter >= self.patience:
                 return True
         return False
+
+def convert_to_normal_dict(mp_dict):
+    normal_dict = {}
+    manager = Manager()
+    manager_dict_type = type(manager.dict())
+    manager_list_type = type(manager.list())
+    for key, value in mp_dict.items():
+        if isinstance(value, manager_dict_type):
+            normal_dict[key] = convert_to_normal_dict(value)
+        elif isinstance(value, manager_list_type):
+            normal_dict[key] = list(value)
+            for i, item in enumerate(normal_dict[key]):
+                if isinstance(item, manager_dict_type):
+                    normal_dict[key][i] = convert_to_normal_dict(item)
+        else:
+            normal_dict[key] = value
+    return normal_dict

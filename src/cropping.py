@@ -63,7 +63,7 @@ class GaussianCrops:
             top =  center_y - crop_height // 2
             bottom = top + crop_height 
             right = left + crop_width 
-            
+            pad_bottom, pad_top, pad_left, pad_right = 0, 0, 0, 0
             
             if self.regularised_crop:
                 if top < 0:
