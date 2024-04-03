@@ -175,6 +175,7 @@ class UniformCrops:
         Returns:
         - List of np.arrays: with two views of the cropped image.     
         """
+        assert image.ndim == 3 and image.shape[2] == 3
         image_width, image_height = img.shape[1], img.shape[0]
         crop_width = int(image_width * np.sqrt(self.crop_percentage))
         crop_height = int(image_height * np.sqrt(self.crop_percentage))

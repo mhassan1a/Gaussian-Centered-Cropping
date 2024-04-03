@@ -21,6 +21,8 @@ method=${methods[$SLURM_ARRAY_TASK_ID]}
 crop_size=${crop_sizes[$SLURM_ARRAY_TASK_ID]}
 
 # Execute your command with the extracted parameters
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+
 python ./src/cifer10_resnet18_mip_gcc.py \
     --method test \
     --crop_size $crop_size \

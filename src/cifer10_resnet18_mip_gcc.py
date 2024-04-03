@@ -197,7 +197,11 @@ def run_trial(MODEL, DATASET, method, crop_size, adaptive_center , std, trial_nu
                          padding=pad,
                          regularised_crop=reg,
                          adaptive_center=adaptive_center,)
-
+    
+    if method == 'rc': # Random Cropping 
+        crop_dim = int(32 * np.sqrt(crop_size))
+        crop = transforms.RandomCrop(crop_dim, padding=0)
+        
     model, pretrain_loss = pretraining(MODEL= MODEL,
                                        DATASET=DATASET,
                                        max_epochs=pretrain_epoch,
