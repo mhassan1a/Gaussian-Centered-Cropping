@@ -170,7 +170,7 @@ def train_classifier(model, max_epochs=100, earlystop_patience=10, num_workers=1
     return test_accuracy , val_accuracy, train_accuracy
 
 
-def run_trial(MODEL, DATASET, method, crop_size, adaptive_center , std, trial_num, num_workers, pretrain_epoch, batchsize, hidden_dim, clf_epochs):
+def run_trial(MODEL, DATASET, method, crop_size, adaptive_center,min_max , std, trial_num, num_workers, pretrain_epoch, batchsize, hidden_dim, clf_epochs):
     view_transform = transforms.Compose([
         transforms.ToPILImage(),
         transforms.RandomHorizontalFlip(),
@@ -196,7 +196,8 @@ def run_trial(MODEL, DATASET, method, crop_size, adaptive_center , std, trial_nu
                          std_scale=std_scale,
                          padding=pad,
                          regularised_crop=reg,
-                         adaptive_center=adaptive_center,)
+                         adaptive_center=adaptive_center,
+                         min_max=min_max,)
     
     if method == 'rc': # Random Cropping 
         crop_dim = int(32 * np.sqrt(crop_size))
@@ -235,6 +236,7 @@ argparser.add_argument('--dataset', type=str, default='Cifar10', required=False,
 argparser.add_argument('--model', type=str, default='Proto18', required=False)
 argparser.add_argument('--adaptive_center', type=str, default='False', required=False)
 argparser.add_argument('--job_id', type=str, default=None, required=False)
+argparser.add_argument('--min_max', type=float, nargs='+', default=[0.25,0.75], required=False)
 args = argparser.parse_args()
 
 Dataset_lookup = {
@@ -268,7 +270,8 @@ if __name__ == '__main__':
     stds = args.std
     adaptive_center = True if args.adaptive_center=='True' else False
     MODEL = Model_lookup[args.model]
-    DATASET = Dataset_lookup[args.dataset]          
+    DATASET = Dataset_lookup[args.dataset]
+    min_max = args.min_max          
 
     # Parallelize the runs for trials only
     mp_manager = mp_manager()
@@ -283,7 +286,7 @@ if __name__ == '__main__':
                 print(f"Method: {method}, Crop Size: {crop_size}, std: {std},Dataset: {DATASET.__name__}, Model: {MODEL.__name__}, Adaptive Center: {adaptive_center}")
                 with ProcessPoolExecutor() as pool:
                     trial_results = [pool.submit(run_trial, 
-                                        MODEL, DATASET,method, crop_size, adaptive_center, 
+                                        MODEL, DATASET,method, crop_size, adaptive_center,min_max , 
                                         std, trial_num, num_workers, pretrain_epoch, batchsize,
                                         hidden_dim, clf_epochs) 
                                         for trial_num in range(num_of_trials)]

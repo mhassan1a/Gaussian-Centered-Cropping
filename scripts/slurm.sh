@@ -38,7 +38,8 @@ python ./src/cifer10_resnet18_mip_gcc.py \
     --dataset 'Cifar10' \
     --model 'Proto18' \
     --adaptive_center $adaptive_center\
-    --job_id $SLURM_JOB_ID$SLURM_ARRAY_TASK_ID
+    --job_id $SLURM_JOB_ID$SLURM_ARRAY_TASK_ID\
+    --min_max 0.4 0.6
 
 # Instructions for running the script:
 # - To run this script, use the following command:

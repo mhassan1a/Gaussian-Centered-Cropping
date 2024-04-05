@@ -1,10 +1,9 @@
 from torch.utils.data import DataLoader, Dataset
-from torchvision.datasets import CIFAR100, CIFAR10, ImageNet
+from torchvision.datasets import CIFAR100, CIFAR10, ImageNet, CocoDetection
 import numpy as np
 from PIL import Image
 from ImageNetLoad import ImageNetDownSample
 from torch.utils.data import Dataset
-from torchvision.datasets import CIFAR10
 from torchvision.transforms import RandomCrop
 import torchvision.transforms as transforms
 from cropping import GaussianCrops

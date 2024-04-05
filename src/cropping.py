@@ -9,8 +9,13 @@ from torchvision.transforms import transforms
 from mpl_toolkits.axes_grid1 import ImageGrid
 
 class GaussianCrops:
-    def __init__(self, crop_percentage=0.4, seed=None, std_scale=1 ,
-                 padding=False, regularised_crop=False, adaptive_center=False):
+    def __init__(self, crop_percentage=0.4,
+                 seed=None, 
+                 std_scale=1 ,
+                 padding=False, 
+                 regularised_crop=False,
+                 adaptive_center=False,
+                 min_max=(0.25, 0.75)):
         """Initialization method for the cropping class.
             
             Args:
@@ -19,6 +24,8 @@ class GaussianCrops:
                 std_scale (float, optional): Scaling factor for the standard deviation of the Gaussian distribution. Defaults to 1.
                 padding (bool, optional): Boolean flag indicating whether padding is applied. Defaults to False.
                 regularised_crop (bool, optional): Boolean flag indicating whether regularized cropping is applied. Defaults to False.
+                adaptive_center (bool, optional): Boolean flag indicating whether the center of the cropping is adaptive. Defaults to False.
+                min_max (tuple, optional): Tuple containing the minimum and maximum values for the adaptive center. Defaults to (0.25, 0.75).
             """
         self.crop_percentage = crop_percentage
         self.seed = seed
@@ -26,6 +33,7 @@ class GaussianCrops:
         self.padding = padding
         self.regularised_crop = regularised_crop
         self.adaptive_center = adaptive_center
+        self.min_max = min_max
         
     def gcc(self, img):
         """
@@ -49,8 +57,8 @@ class GaussianCrops:
         mean_x, mean_y = [image_width // 2, image_height // 2]
         
         if self.adaptive_center:
-            mean_x = np.random.uniform(image_width * 0.25, image_width * 0.75)
-            mean_y = np.random.uniform(image_height * 0.25, image_height * 0.75)
+            mean_x = np.random.uniform(image_width * self.min_max[0], image_width * self.min_max[1])
+            mean_y = np.random.uniform(image_height * self.min_max[0], image_height * self.min_max[1])
         
         if self.seed is not None:
             np.random.seed(self.seed)
@@ -328,7 +336,8 @@ if __name__ == "__main__":
                             std_scale=std_scale,
                             padding=padding,
                             regularised_crop=regularised_crop,
-                            adaptive_center=adaptive_center)
+                            adaptive_center=adaptive_center,
+                            min_max=(0.4, 0.6))
         cropped_images = crop.gcc(img)
         crops2.extend(cropped_images)
     num_images = len(crops2)
