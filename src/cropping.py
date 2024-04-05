@@ -71,8 +71,10 @@ class GaussianCrops:
         
         if img.shape[0] == 3: # C x H x W
             image_height, image_width = img.shape[1], img.shape[2]
-        elif img.shape[2] == 3: # H x W x C    
-            image_height, image_width = img.shape[0], img.shape[1]
+            chw = True
+        elif img.shape[2] == 3: # H x W x C  
+            image_height, image_width = img.shape[0], img.shape[1] 
+            chw = False
         else:
             raise ValueError("The image must have 3 channels.")
         
@@ -167,13 +169,16 @@ class GaussianCrops:
             if right - left < crop_width:
                 pad_left = (crop_width - (right - left)) // 2
                 pad_right = crop_width - (right - left) - pad_left
-                    
-            cropped_image = img[top:bottom, left:right]
-            cropped_image = np.pad(cropped_image, ((pad_top, pad_bottom),
-                (pad_left, pad_right), (0, 0)), mode='constant')
              
-            assert cropped_image.shape[0] == crop_height
-            assert cropped_image.shape[1] == crop_width         
+            if chw: 
+                cropped_image = img[:, top:bottom, left:right]
+                cropped_image = np.pad(cropped_image, ((0, 0), (pad_top, pad_bottom),
+                    (pad_left, pad_right)), mode='constant')
+            else:     
+                cropped_image = img[top:bottom, left:right,:]
+                cropped_image = np.pad(cropped_image, ((pad_top, pad_bottom),
+                    (pad_left, pad_right), (0, 0)), mode='constant')
+             
             crops.append(cropped_image)
         return crops
   
@@ -250,3 +255,17 @@ if __name__ == "__main__":
     plt.title("Gaussian Cropping without adaptive center")
     plt.show()
     plt.savefig(f"gcc_not_adp_std_{std_scale}_cropsize_{crop_percentage}.jpg")
+    
+    
+    # Test the cropping class
+    img = np.random.rand(3,100,200)
+    crop = GaussianCrops(crop_percentage=0.4,
+                         seed=42,
+                         std_scale=1, 
+                         padding=True,
+                         regularised_crop=False,
+                         adaptive_center=False, 
+                         min_max=(0.25, 0.75))
+    crops = crop.gcc(img)
+    print(crops[0].shape, crops[1].shape)
+    
