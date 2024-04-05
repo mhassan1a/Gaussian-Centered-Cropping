@@ -24,7 +24,7 @@ adaptive_center=${adaptive_centers[$SLURM_ARRAY_TASK_ID]}
 
 # Execute your command with the extracted parameters
 #export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-
+export NUMBA_NUM_THREADS=1
 python ./src/cifer10_resnet18_mip_gcc.py \
     --method $method \
     --crop_size 0.2 0.4 0.6 0.8 \

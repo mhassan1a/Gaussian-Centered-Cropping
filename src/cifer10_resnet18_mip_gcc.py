@@ -1,9 +1,9 @@
 from misc import EarlyStopper, convert_to_normal_dict
-from datasets import TwoViewCifar10, TwoViewCifar100, TwoViewImagenet64
+from datasets import TwoViewCifar10, TwoViewCifar100, TwoViewImagenet64, TinyImageNetDataset
 from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, ToTensor
 from cropping import GaussianCrops
-from models import Proto18, Classifier
+from models import Proto18,Proto34, Classifier
 import numpy as np
 import torch
 import torch.nn as nn
@@ -240,11 +240,13 @@ args = argparser.parse_args()
 Dataset_lookup = {
                   'Cifar10': TwoViewCifar10, 
                   'Cifar100': TwoViewCifar100, 
-                  'Imagenet64': TwoViewImagenet64
+                  'Imagenet64': TwoViewImagenet64,
+                  'TinyImageNet': TinyImageNetDataset
                   }
 
 Model_lookup = {
-                'Proto18': Proto18
+                'Proto18': Proto18,
+                'proto35': Proto34,
                 }
 
 
