@@ -1,3 +1,7 @@
+import os
+gpus = [0,1,2,3]
+os.environ["CUDA_VISIBLE_DEVICES"] = ",".join([str(gpu) for gpu in gpus])
+
 from misc import EarlyStopper, convert_to_normal_dict
 from datasets import TwoViewCifar10, TwoViewCifar100, TwoViewImagenet64, TinyImageNetDataset
 from torch.utils.data import DataLoader
@@ -17,13 +21,13 @@ import multiprocessing as multiprocessing
 from multiprocessing import Manager as mp_manager
 from mlp import NestablePool as MyPool
 from concurrent.futures import ProcessPoolExecutor, as_completed
-
 import argparse
-import os
-import sys
+from torch import distributed as dist
 
-def train_epoch( model, dataloader, optimizer, scheduler, criterion, device):
+
+def train_epoch(epoch,model, dataloader, optimizer, scheduler, criterion, device):
     #one epoch of training
+    dataloader.sampler.set_epoch(epoch)
     model.train()
     losses = []
     for i, (view1, view2, target) in enumerate(dataloader):
@@ -39,20 +43,52 @@ def train_epoch( model, dataloader, optimizer, scheduler, criterion, device):
     scheduler.step()
     return np.mean(losses)
 
-def pretraining(MODEL,DATASET,max_epochs=100, batch_size=512, num_workers=40, cropping=None, transform=None, hidden_dim=256):
+def distributed_dataloader(dataset, num_workers, batch_size=512, local_rank=0, world_size=4):
+    sampler = torch.utils.data.distributed.DistributedSampler(dataset, shuffle=True, 
+                                                              num_replicas=world_size, 
+                                                              rank=local_rank)
+    dataloader = DataLoader(dataset, 
+                            batch_size=batch_size, 
+                            num_workers=num_workers, 
+                            sampler=sampler, 
+                           )
+    return dataloader
+
+def distributed_model(model, local_rank):
+    model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
+    model = nn.parallel.DistributedDataParallel(model, device_ids=[local_rank])
+    return model
+
+def pretraining(MODEL,DATASET,max_epochs=100, batch_size=512, num_workers=4, cropping=None, transform=None, hidden_dim=256):
     print(f"GPU Availble:{torch.cuda.is_available()}")
     print('Pre-Traing Starts ...')
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Device: {device}")
+    
+    world_size = torch.cuda.device_count()
+    print(f"World Size: {world_size}")
+
+    local_rank = int(os.environ.get('LOCAL_RANK', 0))
+    print(f"Local Rank: {local_rank}")
+    
+    dist.init_process_group(backend='nccl', 
+                            init_method='env://', 
+                            world_size=world_size, 
+                            rank=local_rank)
+    
+    torch.cuda.set_device(local_rank)
+    
     if DATASET.__name__ == 'TwoViewImagenet64':
         root = './data/Imagenet64_train'
     elif DATASET.__name__ == 'TinyImageNetDataset':
         root = './data/tiny-imagenet-200'
     else:
         root = './data'
+        
     train_dataset = DATASET(root=root, train=True, download=True, cropping=cropping, transform=transform)
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
-    model = MODEL(hidden_dim = hidden_dim).to(device)
+    train_loader = distributed_dataloader(train_dataset, num_workers, batch_size, local_rank, world_size)
+    model = MODEL(hidden_dim = hidden_dim).cuda(local_rank)
+    model = distributed_model(model, local_rank)
     optimizer = torch.optim.Adam(
             model.parameters(), lr=0.01
         )
@@ -61,10 +97,10 @@ def pretraining(MODEL,DATASET,max_epochs=100, batch_size=512, num_workers=40, cr
     train_progress = tqdm(range(max_epochs), desc='pre training', unit='epoch')
     pretrain_loss = []
     for epoch in train_progress:
-        loss = train_epoch(model, train_loader, optimizer, scheduler, criterion, device)
+        loss = train_epoch(epoch, model, train_loader, optimizer, scheduler, criterion, device)
         pretrain_loss.append(loss)
         train_progress.set_postfix(loss=loss)
-    return model, pretrain_loss
+    return model.module, pretrain_loss
 
 
 def addclassifier(model, num_classes):
@@ -121,9 +157,6 @@ def train_classifier(model, max_epochs=100, earlystop_patience=10, num_workers=1
     
     for epoch in range(1,num_epochs+1):
         
-        if epoch%2 == 0:
-            print(".", end="")
-            
         model.train()  
         running_loss = 0.0 
         correct_predictions = 0
@@ -253,7 +286,7 @@ Dataset_lookup = {
 
 Model_lookup = {
                 'Proto18': Proto18,
-                'proto35': Proto34,
+                'Proto34': Proto34,
                 }
 
 
@@ -278,43 +311,28 @@ if __name__ == '__main__':
     DATASET = Dataset_lookup[args.dataset]
     min_max = args.min_max          
 
-    # Parallelize the runs for trials only
-    error = False
-    mp_manager = mp_manager()
-    results = mp_manager.dict()
+    # Create multiple processes to run multiple trials in parallel
+    results = {}
     for method in methods:
-        if error:
-            break
-        results[method] = mp_manager.dict()
+        results[method] = {}
         for crop_size in crop_sizes:
-            if error:
-                break
-            results[method][crop_size] = mp_manager.dict()
+            results[method][crop_size] = {}
             for std in stds:
-                if error:
-                    break
-                results[method][crop_size][std] = mp_manager.list()
+                results[method][crop_size][std] = []
                 # Parallelize trials for each parameter combination
                 print(f"Method: {method}, Crop Size: {crop_size}, std: {std},Dataset: {DATASET.__name__}, Model: {MODEL.__name__}, Adaptive Center: {adaptive_center}")
-                try:
-                    with ProcessPoolExecutor() as pool:
-                        trial_results = [pool.submit(run_trial, 
-                                            MODEL, DATASET,method, crop_size, adaptive_center,min_max , 
-                                            std, trial_num, num_workers, pretrain_epoch, batchsize,
-                                            hidden_dim, clf_epochs) 
-                                            for trial_num in range(num_of_trials)]
-                        
-                    for trial_result in as_completed(trial_results):
-                        test_accuracy, val_accuracy, train_accuracy = trial_result.result()
-                        results[method][crop_size][std].append((test_accuracy, val_accuracy, train_accuracy))
-                except Exception as e:
-                    print('Error:', e)
-                    error = True
-                    break 
+                res = run_trial(MODEL, DATASET,method, crop_size, adaptive_center,min_max , 
+                                        std, 1, num_workers, pretrain_epoch, batchsize,
+                                        hidden_dim, clf_epochs) 
+                                
+                    
+              
+                test_accuracy, val_accuracy, train_accuracy = res
+                results[method][crop_size][std].append((test_accuracy, val_accuracy, train_accuracy))
    
     # Save the final results to a JSON file
     final_results = {
-        'results': convert_to_normal_dict(results),
+        'results': results,
         'epoch': pretrain_epoch,
         'num_classes_workers': num_workers,
         'hidden_dim': hidden_dim,
