@@ -90,24 +90,24 @@ class TwoViewImagenet64(ImageNetDownSample):
         return view1, view2, target
     
 class TinyImageNetDataset(Dataset):
-    def __init__(self, root_dir, transform=None, 
-                 cropping=None):
-        self.root_dir = root_dir
+    def __init__(self, root=None, train=True, transform=None, target_transform=None,
+                 download=False, cropping=None):
+        self.root_dir = root
         self.transform = transform
-        self.classes = sorted(os.listdir(root_dir))
+        self.classes = sorted(os.listdir(root+'/train'))
         self.class_to_idx = {cls_name: idx for idx, cls_name in enumerate(self.classes)}
         self.images = self._load_images()
         self.cropping = cropping
         self.transform = transform
 
     def _load_images(self):
-        images = []
+        train_images = []
         for cls_name in self.classes:
-            cls_dir = os.path.join(self.root_dir, cls_name, 'images')
+            cls_dir = os.path.join(self.root_dir+'/train', cls_name)
             for img_name in os.listdir(cls_dir):
                 img_path = os.path.join(cls_dir, img_name)
-                images.append((img_path, self.class_to_idx[cls_name]))
-        return images
+                train_images.append((img_path, self.class_to_idx[cls_name]))
+        return train_images
 
     def __len__(self):
         return len(self.images)
@@ -137,7 +137,7 @@ if __name__ == '__main__':
     
     view_transform = transforms.Compose([
         transforms.ToPILImage(),
-        transforms.RandomCrop(8, padding=4),
+        #transforms.RandomCrop(8, padding=4),
         transforms.RandomHorizontalFlip(),
         transforms.GaussianBlur(kernel_size=(3, 3)),
         transforms.ToTensor(),
@@ -179,6 +179,13 @@ if __name__ == '__main__':
     cropping = RandomCrop(24)
     train_dataset = TwoViewCifar10(root='./data', train=True, download=False,transform=view_transform, cropping=cropping)
     train_loader = DataLoader(train_dataset, batch_size=5, shuffle=True)
+    for x1, x2, target in train_loader:
+        print(x1.shape, x2.shape, target.shape)
+        break
+    
+    train_dataset = TinyImageNetDataset(root='./data/tiny-imagenet-200', transform=view_transform, cropping=GaussianCrops(0.2,1))
+    train_loader = DataLoader(train_dataset, batch_size=6, shuffle=True)
+    print(len(train_dataset))
     for x1, x2, target in train_loader:
         print(x1.shape, x2.shape, target.shape)
         break

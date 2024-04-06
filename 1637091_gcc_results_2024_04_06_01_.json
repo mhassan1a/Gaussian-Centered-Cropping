@@ -1,0 +1,1 @@
+{"results": {"gcc": {"0.2": {"1.5": [[0.564, 0.5728, 0.58775]]}}}, "epoch": 200, "num_classes_workers": 8, "hidden_dim": 128, "batch_size": 512, "clf_epochs": 100, "Job_id": "1637091", "method": ["gcc"], "crop_size": [0.2], "std": [1.5], "num_of_trials": 1, "dataset": "TinyImageNetDataset", "model": "Proto18", "adaptive_center": false}

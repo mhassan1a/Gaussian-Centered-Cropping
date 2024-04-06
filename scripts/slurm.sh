@@ -25,17 +25,17 @@ adaptive_center=${adaptive_centers[$SLURM_ARRAY_TASK_ID]}
 # Execute your command with the extracted parameters
 #export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 export NUMBA_NUM_THREADS=1
-python ./src/cifer10_resnet18_mip_gcc.py \
+python ./src/train_1gpu.py \
     --method $method \
     --crop_size 0.2 0.4 0.6 0.8 \
     --std  1.5 \
     --num_of_trials 4 \
-    --pretrain_epoch 500 \
-    --num_workers 4 \
+    --pretrain_epoch 200 \
+    --num_workers 8 \
     --hidden_dim 128 \
     --batchsize 512 \
     --clf_epochs 100 \
-    --dataset 'Cifar10' \
+    --dataset 'TinyImageNet' \
     --model 'Proto18' \
     --adaptive_center $adaptive_center\
     --job_id $SLURM_JOB_ID$SLURM_ARRAY_TASK_ID\
@@ -46,3 +46,7 @@ python ./src/cifer10_resnet18_mip_gcc.py \
 #   sbatch --array=0-7 scripts/slurm.sh
 # - The array index will be passed to the script as SLURM_ARRAY_TASK_ID
 # - The script will then extract the corresponding parameters from the arrays and execute the command with these parameters
+
+#options Dataset: Cifar10, Cifar100, TinyImageNet, Imagenet64
+#options Model: Proto18, Proto34
+#options Method: rc (pytorch random crop), gcc, gccr

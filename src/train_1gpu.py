@@ -44,7 +44,12 @@ def pretraining(MODEL,DATASET,max_epochs=100, batch_size=512, num_workers=40, cr
     print('Pre-Traing Starts ...')
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Device: {device}")
-    root = './data/Imagenet64_train' if DATASET.__name__ == 'TwoViewImagenet64' else './data'
+    if DATASET.__name__ == 'TwoViewImagenet64':
+        root = './data/Imagenet64_train'
+    elif DATASET.__name__ == 'TinyImageNetDataset':
+        root = './data/tiny-imagenet-200'
+    else:
+        root = './data'
     train_dataset = DATASET(root=root, train=True, download=True, cropping=cropping, transform=transform)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
     model = MODEL(hidden_dim = hidden_dim).to(device)
@@ -311,6 +316,7 @@ if __name__ == '__main__':
         'dataset': DATASET.__name__,
         'model': MODEL.__name__,  
         'adaptive_center': adaptive_center,
+        'min_max': min_max,
     }
     print('Results:')
     print(final_results)
