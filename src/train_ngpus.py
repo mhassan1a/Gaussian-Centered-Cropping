@@ -360,5 +360,6 @@ if __name__ == '__main__':
     print('job_id:', job_id)
     print('Timestamp:')
     print(timestamp)
+    raise SystemExit('results saved successfully!')
    
     

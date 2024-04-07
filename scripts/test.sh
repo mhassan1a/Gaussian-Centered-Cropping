@@ -1,8 +1,13 @@
 #!/bin/bash
-#SBATCH --partition=gpu4         # partition / wait queue
+#SBATCH --mail-type=begin        # send email when job begins
+#SBATCH --mail-type=end          # send email when job ends
+#SBATCH --mail-type=fail         # send email if job fails
+#SBATCH --mail-user=mohamed.hassan@smail.inf.h-brs.de 
+
+#SBATCH --partition=gpu         # partition / wait queue
 #SBATCH --nodes=1                # number of nodes
-#SBATCH --tasks-per-node=64       # number of tasks per node
-#SBATCH --time=3-0:00:00         # total runtime of job allocation
+#SBATCH --tasks-per-node=32       # number of tasks per node
+#SBATCH --time=0-10:00:00         # total runtime of job allocation
 #SBATCH --gres=gpu:1             # number of general-purpose GPUs
 #SBATCH --mem=170G               # memory per node in MB
 #SBATCH --output=./out/train_net-%j.out    # filename for STDOUT
@@ -23,7 +28,7 @@ crop_size=${crop_sizes[$SLURM_ARRAY_TASK_ID]}
 # Execute your command with the extracted parameters
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
-python ./src/cifer10_resnet18_mip_gcc.py \
+python ./src/train_1gpu.py \
     --method test \
     --crop_size $crop_size \
     --std 0.001  \

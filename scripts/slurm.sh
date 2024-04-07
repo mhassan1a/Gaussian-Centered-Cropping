@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --partition=gpu4        # partition / wait queue
+#SBATCH --partition=gpu       # partition / wait queue
 #SBATCH --nodes=1                # number of nodes
 #SBATCH --tasks-per-node=32       # number of tasks per node
 #SBATCH --time=3-0:00:00         # total runtime of job allocation
