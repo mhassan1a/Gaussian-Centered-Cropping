@@ -13,15 +13,16 @@ echo "Starting Job"
 echo "Array Index: $SLURM_ARRAY_TASK_ID"
 echo 'Job ID: ' $SLURM_JOB_ID$SLURM_ARRAY_TASK_ID
 # Define an array of parameters
-methods=('gcc' 'gccr')
-#adaptive_centers=(False False True False)
+methods=('gcc' 'gcc' 'gcc')
+min_max_list=('0.25 0.75' '0.4 0.6' '0.25 0.75')
+adaptive_centers=(False True True)
 crop_sizes=(0.2 0.2 0.4 0.4 0.6 0.6 0.8 0.8)
 stds=(0.001 0.01 0.1 0.5 1.0 1.5 2.0 3.0 4.0 5.0 10 50 100.0 200.0)
 # Extract parameters for this job
 method=${methods[$SLURM_ARRAY_TASK_ID]}
 crop_size=${crop_sizes[$SLURM_ARRAY_TASK_ID]}
 adaptive_center=${adaptive_centers[$SLURM_ARRAY_TASK_ID]}
-
+min_max=${min_max_list[$SLURM_ARRAY_TASK_ID]}
 # Execute your command with the extracted parameters
 #export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 export NUMBA_NUM_THREADS=1
@@ -30,16 +31,16 @@ python ./src/train_1gpu.py \
     --crop_size 0.2 0.4 0.6 0.8 \
     --std  1.5 \
     --num_of_trials 3 \
-    --pretrain_epoch 500 \
+    --pretrain_epoch 200 \
     --num_workers 3 \
     --hidden_dim 128 \
     --batchsize 512 \
     --clf_epochs 100 \
-    --dataset 'Cifar10' \
+    --dataset 'TinyImageNet' \
     --model 'Proto18' \
-    --adaptive_center False\
+    --adaptive_center $adaptive_center\
     --job_id $SLURM_JOB_ID$SLURM_ARRAY_TASK_ID\
-    --min_max 0.4 0.6
+    --min_max $min_max
 
 
 
