@@ -1,0 +1,1 @@
+{"results": {"rc": {"0.4": {"1.5": [[0.5871, 0.5912, 0.607925]]}}}, "epoch": 200, "num_classes_workers": 18, "hidden_dim": 128, "batch_size": 512, "clf_epochs": 100, "Job_id": "1646521", "method": ["rc"], "crop_size": [0.4], "std": [1.5], "num_of_trials": 1, "dataset": "TwoViewImagenet64", "model": "Proto34", "adaptive_center": false, "min_max": [0.25, 0.75]}

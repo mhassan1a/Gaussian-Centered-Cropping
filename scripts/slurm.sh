@@ -28,7 +28,7 @@ min_max=${min_max_list[$SLURM_ARRAY_TASK_ID]}
 export NUMBA_NUM_THREADS=1
 python ./src/train_1gpu.py \
     --method $method \
-    --crop_size 0.2 0.4 0.6 0.8 \
+    --crop_size 0.4 0.6 0.8 \
     --std  1.5 \
     --num_of_trials 3 \
     --pretrain_epoch 200 \
