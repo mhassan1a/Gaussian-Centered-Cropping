@@ -15,7 +15,7 @@ echo 'Job ID: ' $SLURM_JOB_ID$SLURM_ARRAY_TASK_ID
 # Define an array of parameters
 methods=('rc' 'rc' 'rc' 'gcc' 'gcc' 'gcc' 'gcc' 'gcc' 'gcc')
 adaptive_centers=(False False False False False False True True True)
-5crop_sizes=(0.2 0.4 0.6 0.2 0.4 ,0.6 0.2 0.4 0.6)
+crop_sizes=(0.2 0.4 0.6 0.2 0.4 0.6 0.2 0.4 0.6)
 stds=(0.001 0.01 0.1 0.5 1.0 1.5 2.0 3.0 4.0 5.0 10 50 100.0 200.0)
 # Extract parameters for this job
 method=${methods[$SLURM_ARRAY_TASK_ID]}

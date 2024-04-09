@@ -6,7 +6,7 @@ from ImageNetLoad import ImageNetDownSample
 from torch.utils.data import Dataset
 from torchvision.transforms import RandomCrop
 import torchvision.transforms as transforms
-from cropping import GaussianCrops
+from cropping import GaussianCrops, gaussianCrops
 import torch
 import os
 
@@ -135,7 +135,9 @@ class TinyImageNetDataset(Dataset):
 
 if __name__ == '__main__':
     
+    
     view_transform = transforms.Compose([
+        
         transforms.ToPILImage(),
         #transforms.RandomCrop(8, padding=4),
         transforms.RandomHorizontalFlip(),
