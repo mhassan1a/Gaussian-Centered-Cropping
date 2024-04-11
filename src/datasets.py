@@ -1,5 +1,5 @@
 from torch.utils.data import DataLoader, Dataset
-from torchvision.datasets import CIFAR100, CIFAR10, ImageNet, CocoDetection
+from torchvision.datasets import CIFAR100, CIFAR10
 import numpy as np
 from PIL import Image
 from ImageNetLoad import ImageNetDownSample

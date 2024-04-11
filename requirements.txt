@@ -4,5 +4,4 @@ torchvision
 lightly
 matplotlib
 Pillow
-scikit-learn
 pytest

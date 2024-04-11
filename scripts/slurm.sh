@@ -2,9 +2,9 @@
 #SBATCH --partition=gpu4       # partition / wait queue
 #SBATCH --nodes=1                # number of nodes
 #SBATCH --tasks-per-node=32       # number of tasks per node
-#SBATCH --time=3-0:00:00         # total runtime of job allocation
+#SBATCH --time=0-24:00:00         # total runtime of job allocation
 #SBATCH --gres=gpu:1             # number of general-purpose GPUs
-#SBATCH --mem=80G               # memory per node in MB
+#SBATCH --mem=150G               # memory per node in MB
 #SBATCH --output=./out/train_net-%j.out    # filename for STDOUT
 #SBATCH --error=./out/train_net-%j.err     # filename for STDERR
 
@@ -13,10 +13,10 @@ echo "Starting Job"
 echo "Array Index: $SLURM_ARRAY_TASK_ID"
 echo 'Job ID: ' $SLURM_JOB_ID$SLURM_ARRAY_TASK_ID
 # Define an array of parameters
-methods=('gcc' 'gcc' 'gcc')
+methods=('gcc' 'gcc' 'gcc' )
 min_max_list=('0.25 0.75' '0.4 0.6' '0.25 0.75')
-adaptive_centers=(False True True)
-crop_sizes=(0.2 0.2 0.4 0.4 0.6 0.6 0.8 0.8)
+adaptive_centers=(False False False)
+crop_sizes=(0.2 0.4 0.6)
 stds=(0.001 0.01 0.1 0.5 1.0 1.5 2.0 3.0 4.0 5.0 10 50 100.0 200.0)
 # Extract parameters for this job
 method=${methods[$SLURM_ARRAY_TASK_ID]}
@@ -28,8 +28,8 @@ min_max=${min_max_list[$SLURM_ARRAY_TASK_ID]}
 export NUMBA_NUM_THREADS=1
 python ./src/train_1gpu.py \
     --method $method \
-    --crop_size 0.4 0.6 0.8 \
-    --std  1.5 \
+    --crop_size $crop_size \
+    --std  3 \
     --num_of_trials 3 \
     --pretrain_epoch 200 \
     --num_workers 3 \

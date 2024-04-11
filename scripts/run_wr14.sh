@@ -1,0 +1,15 @@
+python ./src/train_1gpu.py \
+    --method gcc \
+    --crop_size 0.2 \
+    --std  3 \
+    --num_of_trials 1 \
+    --pretrain_epoch 200 \
+    --num_workers 3 \
+    --hidden_dim 128 \
+    --batchsize 512 \
+    --clf_epochs 100 \
+    --dataset 'TinyImageNet' \
+    --model 'Proto18' \
+    --adaptive_center True\
+    --job_id 0\
+    --min_max 0.25 0.75

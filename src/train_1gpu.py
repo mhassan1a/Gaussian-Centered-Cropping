@@ -17,10 +17,8 @@ import multiprocessing as multiprocessing
 from multiprocessing import Manager as mp_manager
 from mlp import NestablePool as MyPool
 from concurrent.futures import ProcessPoolExecutor, as_completed
-
 import argparse
-import os
-import sys
+
 
 def train_epoch( model, dataloader, optimizer, scheduler, criterion, device):
     #one epoch of training

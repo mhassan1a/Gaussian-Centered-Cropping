@@ -1,14 +1,9 @@
 import numpy as np
-import torch
-import os
-import pickle
 import matplotlib.pyplot as plt
 from PIL import Image
 from torchvision.transforms.functional import crop
 from torchvision.transforms import transforms
 from mpl_toolkits.axes_grid1 import ImageGrid
-from numba import njit, float64, int64, boolean
-
 
 class GaussianCrops:
     def __init__(self, crop_percentage=0.4,
@@ -253,16 +248,34 @@ def gaussianCrops(crop_percentage=0.4,
             
             std_x = image_width  * std_scale
             std_y = image_height  * std_scale
-            mean_x, mean_y = [image_width // 2, image_height // 2]
-            
-            if adaptive_center:
-                mean_x = np.random.uniform(image_width * min_max[0], image_width * min_max[1])
-                mean_y = np.random.uniform(image_height * min_max[0], image_height * min_max[1])
+            mean_x, mean_y = image_width // 2, image_height // 2
             
             if seed is not None:
-                np.random.seed(seed)
-            centers = np.random.multivariate_normal([mean_x,mean_y], [[std_x, 0], [0, std_y]], 2)
+                    rng = np.random.default_rng(seed)
+            rng = np.random.default_rng()
             
+            
+            if adaptive_center:
+                # means = [[mean_x-min_max[0]*image_width, mean_y-min_max[0]*image_height],
+                #             [mean_x+min_max[0]*image_width, mean_y-min_max[0]*image_height],
+                #             [mean_x-min_max[0]*image_width, mean_y+min_max[0]*image_height],
+                #             [mean_x+min_max[0]*image_width, mean_y+min_max[0]*image_height],
+                #             [mean_x, mean_y]]
+                
+                # 
+                # mixure = [rng.multivariate_normal(means[i], [[std_x, 0], [0, std_y]], 2) for i in range(5)]
+                # centers = mixure[rng.choice(np.arange(5), p=[0.2, 0.2, 0.2, 0.2, 0.2])]
+                            
+                mean_x = rng.uniform(min_max[0],min_max[1]) * image_width
+                mean_y = rng.uniform(min_max[0],min_max[1]) * image_height
+                # center_x = std_x * rng.normal(size=(2,1))+ mean_x 
+                # center_y = std_y * rng.normal(size=(2,1))+ mean_x 
+                # centers = list(zip(center_x, center_y))                
+   
+            centers = rng.multivariate_normal(np.array([mean_x,mean_y]), [[std_x, 0], [0, std_y]], 2)
+
+        
+            boxes = []  
             crops = []
             for center in centers:
                 center_x, center_y = int(center[0]), int(center[1])
@@ -349,7 +362,8 @@ def gaussianCrops(crop_percentage=0.4,
                         (pad_left, pad_right), (0, 0)), mode='constant')
                 
                 crops.append(cropped_image)
-            return crops
+                boxes.append([top, bottom, left, right])
+            return crops, boxes, (centers,(mean_x, mean_y))
         return gcc
         
   
@@ -437,6 +451,6 @@ if __name__ == "__main__":
                          regularised_crop=False,
                          adaptive_center=False, 
                          min_max=(0.25, 0.75))
-    crops = crop(img)
+    crops,*_ = crop(img)
     print(crops[0].shape, crops[1].shape)
     
