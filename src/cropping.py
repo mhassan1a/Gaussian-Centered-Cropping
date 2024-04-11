@@ -4,7 +4,7 @@ from PIL import Image
 from torchvision.transforms.functional import crop
 from torchvision.transforms import transforms
 from mpl_toolkits.axes_grid1 import ImageGrid
-
+from time import time
 class GaussianCrops:
     def __init__(self, crop_percentage=0.4,
                  seed=None, 
@@ -369,6 +369,7 @@ def gaussianCrops(crop_percentage=0.4,
   
     
 if __name__ == "__main__":
+    timestamp = time()
     img = Image.open("others/g44yy1dz.bmp")
     img = np.array(img)
 
@@ -408,13 +409,13 @@ if __name__ == "__main__":
     plt.title("Gaussian Cropping with adaptive center")
     plt.legend()
     plt.show()
-    plt.savefig(f"gcc_adp_std_{std_scale}_cropsize_{crop_percentage}.jpg")
+    plt.savefig(f"{timestamp}_gcc_adp_std_{std_scale}_cropsize_{crop_percentage}.jpg")
     crops2 = []
     for i in range(num_samples):
         crop_percentage = 0.4
         seed = None
         adaptive_center = False
-        std_scale = 10
+        std_scale = 1
         crop = GaussianCrops(crop_percentage=crop_percentage,
                             seed=seed,
                             std_scale=std_scale,
@@ -439,7 +440,7 @@ if __name__ == "__main__":
         ax.axis("off")
     plt.title("Gaussian Cropping without adaptive center")
     plt.show()
-    plt.savefig(f"gcc_not_adp_std_{std_scale}_cropsize_{crop_percentage}.jpg")
+    plt.savefig(f"{timestamp}_gcc_not_adp_std_{std_scale}_cropsize_{crop_percentage}.jpg")
     
     
     # Test the cropping class
