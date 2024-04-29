@@ -48,7 +48,6 @@ class Classifier(nn.Module):
         super(Classifier, self).__init__()
         self.fc = nn.Sequential(
                                 nn.Linear(num_features_in, num_classes),  
-                                nn.LogSoftmax(dim=1)
                                 )  
         
     def forward(self, x):
