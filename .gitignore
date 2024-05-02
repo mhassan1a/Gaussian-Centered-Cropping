@@ -25,3 +25,4 @@ venv.bak/
 *.bin
 *.pyc
 src/__pycache__/
+*.pt

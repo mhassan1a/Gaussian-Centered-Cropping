@@ -47,7 +47,7 @@ class Classifier(nn.Module):
     def __init__(self, num_features_in, hidden_dim=512, num_classes=10):
         super(Classifier, self).__init__()
         self.fc = nn.Sequential(
-                                nn.Linear(num_features_in, num_classes),  
+                            nn.Linear(num_features_in, num_classes),  
                                 )  
         
     def forward(self, x):
@@ -57,13 +57,16 @@ class Classifier(nn.Module):
 
 if __name__ == '__main__':      
     model= Proto18(hidden_dim=128)
+    torch.jit.save(torch.jit.script(model), 'model18.pt')
     print(model)
     input = torch.randn(1, 32, 32, 3).permute(0, 3, 1, 2)
     output = model(input)   
     
     model= Proto34(hidden_dim=128)
+    torch.jit.save(torch.jit.script(model), 'model34.pt')
     print(model)
     output = model(input)
     
     classifier = Classifier(128)
+    torch.jit.save(torch.jit.script(classifier), 'classifier.pt')
     print(classifier)
