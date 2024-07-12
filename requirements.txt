@@ -5,3 +5,6 @@ lightly
 matplotlib
 Pillow
 pytest
+pandas
+seaborn
+opencv-python

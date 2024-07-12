@@ -47,7 +47,8 @@ class Classifier(nn.Module):
     def __init__(self, num_features_in, hidden_dim=512, num_classes=10):
         super(Classifier, self).__init__()
         self.fc = nn.Sequential(
-                            nn.Linear(num_features_in, num_classes),  
+                            nn.Linear(num_features_in, num_classes),
+                            nn.LogSoftmax(dim=1)  
                                 )  
         
     def forward(self, x):
