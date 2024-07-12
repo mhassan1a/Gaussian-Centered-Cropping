@@ -26,3 +26,5 @@ venv.bak/
 *.pyc
 src/__pycache__/
 *.pt
+others/
+results/
