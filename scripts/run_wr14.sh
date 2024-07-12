@@ -3,12 +3,12 @@ python ./src/train_1gpu.py \
     --crop_size 0.2 \
     --std  3 \
     --num_of_trials 1 \
-    --pretrain_epoch 200 \
+    --pretrain_epoch 1 \
     --num_workers 3 \
     --hidden_dim 128 \
     --batchsize 512 \
-    --clf_epochs 100 \
-    --dataset 'TinyImageNet' \
+    --clf_epochs 1 \
+    --dataset 'Cifar10' \
     --model 'Proto18' \
     --adaptive_center True\
     --job_id 0\
