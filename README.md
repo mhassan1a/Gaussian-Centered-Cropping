@@ -103,3 +103,16 @@ python ./src/train_1gpu.py \
 for Multi-GPUs change `train_1gpu` to `train_ngpus`
 
 Note: Please make sure you have a GPU available for training the model. The code provided assumes that you have access to a GPU for faster computation. If you don't have a GPU, you may experience slower training times or may need to modify the code to run on a CPU-only setup.
+
+
+
+## Submission
+
+This project has been submitted to the Department of Computer Science at Hochschule Bonn-Rhein-Sieg in partial fulfillment of the requirements for the degree of Master of Science in Autonomous Systems.
+
+By Mohamed Hassan
+
+And
+
+Supervised by Prof. Dr.-Ing. Sebastian Houben and Mohammad Wasil, M.Sc.
+
