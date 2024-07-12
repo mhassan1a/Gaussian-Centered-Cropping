@@ -34,8 +34,13 @@ multiple objects, further reducing the likelihood of false positives.
 Index Terms—Contrastive Learning, Random Cropping, Ran-
 domness, Data Augmentation, Parametric Random Cropping,
 Computer Vision.
+#
+This project has been submitted by `Mohamed Hassan` to the Department of Computer Science at Hochschule Bonn-Rhein-Sieg in partial fulfillment of the requirements for the degree of Master of Science in Autonomous Systems.
 
-###### Submitted to the Department of Computer Science at Hochschule Bonn-Rhein-Sieg in partial fulfillment of the requirements for the degree of Master of Science in Autonomous Systems.
+
+Supervised by 
+- Prof. Dr.-Ing. Sebastian Houben 
+- Mohammad Wasil, M.Sc.
 
 ## Folder Hierarchy
 
@@ -73,14 +78,30 @@ Feel free to explore these files to understand the project structure and functio
 
 
 
+
 # Usage
-To install the required dependencies, you can use the following command:
+
+To use this project, follow the steps below:
+
+1. Clone the repository to your local machine by running the following command in your terminal:
+
+```bash
+git clone https://github.com/mhassan1a/Research-and-Development-Project-Msc-.git
+```
+
+2. Navigate to the project directory:
+
+```bash
+cd Research-and-Development-Project-Msc
+```
+
+3. Install the required dependencies by running the following command:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-For training with one gpu, you can use the following command:
+4. Run the training script with a single GPU using the following command:
 
 ```bash
 python ./src/train_1gpu.py \
@@ -100,19 +121,27 @@ python ./src/train_1gpu.py \
     --min_max 0.25 0.75
 ```
 
-for Multi-GPUs change `train_1gpu` to `train_ngpus`
+5. If you have multiple GPUs, you can run the training script with multiple GPUs using the following command:
 
-Note: Please make sure you have a GPU available for training the model. The code provided assumes that you have access to a GPU for faster computation. If you don't have a GPU, you may experience slower training times or may need to modify the code to run on a CPU-only setup.
+```bash
+python ./src/train_ngpus.py \
+    --method gcc \
+    --crop_size 0.2 \
+    --std  3 \
+    --num_of_trials 1 \
+    --pretrain_epoch 200 \
+    --num_workers 3 \
+    --hidden_dim 128 \
+    --batchsize 512 \
+    --clf_epochs 100 \
+    --dataset 'Cifar10' \
+    --model 'Proto18' \
+    --adaptive_center True\
+    --job_id 0\
+    --min_max 0.25 0.75
+```
 
 
 
-## Submission
 
-This project has been submitted to the Department of Computer Science at Hochschule Bonn-Rhein-Sieg in partial fulfillment of the requirements for the degree of Master of Science in Autonomous Systems.
-
-By Mohamed Hassan
-
-And
-
-Supervised by Prof. Dr.-Ing. Sebastian Houben and Mohammad Wasil, M.Sc.
 
