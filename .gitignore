@@ -1,5 +1,7 @@
 data/
 out/
+others/
+results/
 ./__pycache__
 ./.ipynb_checkpoints
 ./.ipynb_checkpoints/Untitled-checkpoint.ipynb
@@ -26,5 +28,3 @@ venv.bak/
 *.pyc
 src/__pycache__/
 *.pt
-others/
-results/
