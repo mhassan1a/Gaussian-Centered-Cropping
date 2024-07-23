@@ -1,39 +1,8 @@
 # Research and Development Project
 ## Title: The Effect of the Randomness Underlying Image Cropping in Contrastive Learning: A Comparative Study 
-* Abstract—In the contemporary computer vision and deep
-learning landscape, contrastive learning (CL) stands out as
-one of the most important self-supervised learning (SSL)
-frameworks. CL offers the advantage of learning directly
-from unlabeled data by leveraging fundamental knowledge
-representation principles, thereby enabling the acquisition of
-meaningful representations that are transferable to downstream
-tasks. However, the success of CL methods is highly dependent
-on the effective use of robust image augmentation techniques,
-particularly random cropping.
-CL methods utilize random cropping to produce similar and
-semantically related views, termed positive pairs. By contrasting
-these views with one another, these methods aim to learn and
-capture representative features of the classes. However, random
-cropping can also introduce false positives, where views from
-different classes are incorrectly treated as positive pairs, leading
-to a significant degradation in performance. Consequently, the
-primary challenge associated with the stochastic generation of
-crops lies in striking a balance between introducing non-trivial
-positive pairs and minimizing the occurrence of false positives.
-To tackle this challenge, this project proposes a novel ap-
-proach: a parameterized cropping method, Gaussian Centered
-Cropping (GCC), that facilitates hyper-tuning of the cropping
-process, thereby reducing the occurrence of false positives. The
-experimental results demonstrate that the proposed method
-outperforms traditional random cropping by 2.7, 6.7, 9.5, and
-12.4 percentage points for crop sizes of 20%, 40%, 60%, and
-80% respectively, at the same computational cost. In addition,
-an enhanced version of GCC, Multi-object Gaussian Centered
-Cropping (MGCC), is presented to handle images containing
-multiple objects, further reducing the likelihood of false positives.
-Index Terms—Contrastive Learning, Random Cropping, Ran-
-domness, Data Augmentation, Parametric Random Cropping,
-Computer Vision.
+* Abstract—In the contemporary landscape of computer vision and deep learning (DL), contrastive learning (CL) stands out as one of the most important self-supervised learning (SSL) frameworks. CL offers the advantage of learning directly from unlabeled data by leveraging fundamental knowledge representation principles, thereby enabling DL models to learn features that are transferable to downstream tasks. However, the success of CL methods is highly dependent on the effective use of robust image augmentation techniques, particularly image cropping. CL methods utilize randomized cropping (RC) to produce semantically related views (i.e. positive pairs) that serve as self-labels. However, RC can also introduce false positives, where views from different classes are incorrectly treated as positive pairs, significantly degrading performance.
+
+Consequently, the primary challenge associated with image cropping, in the context of CL, lies in striking a balance between introducing non-trivial positive pairs and minimizing the occurrence of false positives. To address this challenge, this project proposes a novel approach: A parameterized cropping method, Gaussian-Centered Cropping (GCC), that facilitates the fine-tuning of the cropping process to reduce the likelihood of false positives and improve the performance. The experimental results demonstrate that the proposed method outperforms Random Crop by 2.7, 6.7, 9.5, and 12.4 percentage points for crop sizes of 20\%, 40\%, 60\%, and 80\% respectively, at the same computational cost. In addition, an enhanced version of GCC, Multi-object Gaussian-Centered Cropping (MGCC), is presented to handle images containing multiple objects.
 #
 This project has been submitted by `Mohamed Hassan` to the Department of Computer Science at Hochschule Bonn-Rhein-Sieg in partial fulfillment of the requirements for the degree of Master of Science in Autonomous Systems.
 
