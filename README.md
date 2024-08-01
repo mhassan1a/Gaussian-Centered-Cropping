@@ -53,13 +53,13 @@ To use this project, follow the steps below:
 1. Clone the repository to your local machine by running the following command in your terminal:
 
 ```bash
-git clone https://github.com/mhassan1a/Research-and-Development-Project-Msc-.git
+git clone https://github.com/mhassan1a/Gaussian-Centered-Cropping.git
 ```
 
 2. Navigate to the project directory:
 
 ```bash
-cd Research-and-Development-Project-Msc
+cd Gaussian-Centered-Cropping
 ```
 
 3. Install the required dependencies by running the following command:
